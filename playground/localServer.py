@@ -75,12 +75,14 @@ class LocalServer:
 if __name__ == '__main__':
 
   from pathlib import Path
+  import webbrowser
 
   ROOT_PATH = Path(__file__).parents[0]
   index_path = ROOT_PATH / '../docs/'
 
   with LocalServer(root_dir=str(index_path)) as server:
     print(server.url)
+    webbrowser.open(server.url)
     input('Running... (Enter to quit)')
     print('Server stopped.')
 
