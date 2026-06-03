@@ -19,8 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.appendChild(playButton);
 });
 
-
-
 /*
 const synth = new Tone.PolySynth(Tone.Synth).toDestination();
 
