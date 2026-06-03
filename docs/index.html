@@ -31,11 +31,29 @@
     <title>pystaJavaScriptPlayground</title>
   </head>
   <body>
-    <h2>Cメジャースケール</h2>
+    <h2>スケール学習</h2>
 
-    <mq-piano id="piano" start-note="C4" end-note="C5" mode="centered" preserve-ratio> </mq-piano>
+    <div class="controls">
+      <select id="rootSelect">
+        <option value="C4">C</option>
+        <option value="D4">D</option>
+        <option value="E4">E</option>
+        <option value="F4">F</option>
+        <option value="G4">G</option>
+        <option value="A4">A</option>
+        <option value="B4">B</option>
+      </select>
 
-    <br />
-    <button id="playScaleBtn">Cメジャースケールを再生</button>
+      <select id="scaleTypeSelect">
+        <option value="major">メジャー</option>
+        <option value="minor">ナチュラルマイナー</option>
+        <option value="harmonic minor">ハーモニックマイナー</option>
+        <option value="pentatonic">ペンタトニック</option>
+      </select>
+
+      <button id="playBtn">再生</button>
+    </div>
+
+    <mq-piano id="piano" start-note="A3" end-note="D6" mode="centered" preserve-ratio></mq-piano>
   </body>
 </html>
