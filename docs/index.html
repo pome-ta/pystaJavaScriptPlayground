@@ -11,9 +11,9 @@
       {
         "imports": {
           "eruda": "https://esm.sh/eruda",
-          "tone": "https://esm.sh/tone@next",
-          "qwerty-hancock":"https://esm.sh/qwerty-hancock",
-          "@hsablonniere/musiq": "https://esm.sh/@hsablonniere/musiq/"
+          "tone": "https://esm.sh/tone",
+          "tonal": "https://esm.sh/@tonaljs/tonal",
+          "@hsablonniere/musiq/": "https://esm.sh/@hsablonniere/musiq/"
         }
       }
     </script>
@@ -30,5 +30,12 @@
 
     <title>pystaJavaScriptPlayground</title>
   </head>
-  <body></body>
+  <body>
+    <h2>Cメジャースケール</h2>
+
+    <mq-piano id="piano" start-note="C4" end-note="C5" mode="centered" preserve-ratio> </mq-piano>
+
+    <br />
+    <button id="playScaleBtn">Cメジャースケールを再生</button>
+  </body>
 </html>

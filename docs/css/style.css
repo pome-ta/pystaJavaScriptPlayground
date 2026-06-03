@@ -1,3 +1,40 @@
 @charset "utf-8";
 /*@import url('./styleChecker.css');*/
+#piano {
 
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  /* touch-action: none; */
+}
+
+.highlight-marker {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  background-color: #ff5252;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  pointer-events: none;
+} 
+
+button {
+  padding: 12px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+button:hover {
+  background-color: #45a049;
+}

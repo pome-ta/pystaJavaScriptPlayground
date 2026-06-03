@@ -1,48 +1,50 @@
 import * as Tone from 'tone';
-import { QwertyHancock } from 'qwerty-hancock';
+import { Scale } from 'tonal';
 import '@hsablonniere/musiq/mq-piano';
 
-const synth = new Tone.Synth().toDestination();
+const piano = document.getElementById('piano');
+const synth = new Tone.PolySynth(Tone.Synth).toDestination();
 
-const playButton = document.createElement('button');
-playButton.textContent = 'play';
+function highlightKey(note, duration) {
+  const safeNote = note.replace('#', 's');
+  const slotName = `note-${safeNote}`;
 
-playButton.addEventListener('click', () => {
+  const marker = document.createElement('div');
+  marker.className = 'highlight-marker';
+  marker.setAttribute('slot', slotName);
+
+  marker.textContent = note.replace(/[0-9]/g, '');
+
+  piano.appendChild(marker);
+
+  setTimeout(() => {
+    marker.remove();
+  }, duration * 1000);
+}
+
+document.getElementById('playScaleBtn').addEventListener('click', async () => {
+  await Tone.start();
+
+  const scaleNotes = Scale.get('C major').notes;
+  const notesToPlay = [...scaleNotes.map((n) => n + '4'), 'C5'];
+
   const now = Tone.now();
-  synth.triggerAttackRelease('C4', '8n', now);
-  synth.triggerAttackRelease('E4', '8n.', now + 0.5);
-  synth.triggerAttackRelease('G4', '8t', now + 1);
-  synth.triggerAttackRelease('B4', '8n', now + 1.5);
+  const noteDuration = 0.5;
+
+  notesToPlay.forEach((note, index) => {
+    const time = now + index * noteDuration;
+
+    synth.triggerAttackRelease(note, noteDuration, time);
+
+    Tone.Draw.schedule(() => {
+      highlightKey(note, noteDuration);
+    }, time);
+  });
 });
 
+/*
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');
   document.body.appendChild(playButton);
 });
-
-/*
-const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-
-    // Qwerty Hancock keyboard setup
-    const keyboard = new QwertyHancock({
-      id: 'keyboard',
-      width: 600,
-      height: 150,
-      octaves: 3,
-      startNote: 'C4',
-      whiteNotesColour: '#fff',
-      blackNotesColour: '#000',
-      hoverColour: '#f3e5f5'
-    });
-
-    // Wire the keyboard to Tone.js
-    keyboard.keyDown = (note, frequency) => {
-      // Trigger attack when a key is pressed
-      synth.triggerAttack(note);
-    };
-
-    keyboard.keyUp = (note, frequency) => {
-      // Trigger release when a key is released
-      synth.triggerRelease(note);
-    };
 */
