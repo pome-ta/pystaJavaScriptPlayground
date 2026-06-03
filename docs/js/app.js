@@ -1,5 +1,6 @@
 import * as Tone from 'tone';
 import { QwertyHancock } from 'qwerty-hancock';
+import '@hsablonniere/musiq/mq-piano';
 
 const synth = new Tone.Synth().toDestination();
 
