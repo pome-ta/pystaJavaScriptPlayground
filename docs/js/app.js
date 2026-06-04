@@ -1,5 +1,5 @@
-//import p5 from 'p5';
-/*
+import p5 from 'p5';
+
 const sketch = (p) => {
   p.setup = () => {
     p.createCanvas(400, 400);
@@ -12,7 +12,7 @@ const sketch = (p) => {
 };
 
 new p5(sketch);
-*/
+
 
 /*
 import * as Tone from 'tone';
