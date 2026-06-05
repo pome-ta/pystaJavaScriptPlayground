@@ -39,7 +39,7 @@ button:hover {
   /* スマホのスクロールやズームを防止 */
   touch-action: none;
 
-  /* ✨ 追加:iOS特有の「テキスト選択」や「長押しメニュー」を完全に封じる ✨ */
+  /* iOS特有の「テキスト選択」や「長押しメニュー」を完全に封じる */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -50,7 +50,7 @@ button:hover {
   position: relative;
 }
 
-/* ✨ 鍵盤全体を覆うハイライトフィルム ✨ */
+/* 鍵盤全体を覆うハイライトフィルム */
 .key-highlight {
   position: absolute;
   top: 0;
@@ -60,7 +60,6 @@ button:hover {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease;
-  /* ❌ ここにあった z-index: 1; を削除しました!これだけで直ります! */
 }
 
 /* 鳴っている時(アクティブ)にフィルムを表示 */
@@ -126,7 +125,7 @@ button:hover {
   background-color: #34ace0;
 }
 
-/* ✨ アクティブ状態のドットのハイライト(重複記述を削除し、ここにまとめました) ✨ */
+/* アクティブ状態のドットのハイライト */
 .dot.active {
   transform: translateX(-50%) scale(1.3);
   box-shadow: 0 0 0 2px #fff, 0 0 0 6px #ffeb3b, 0 4px 10px rgba(0, 0, 0, 0.5);

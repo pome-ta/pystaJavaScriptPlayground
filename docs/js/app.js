@@ -10,7 +10,7 @@ const scaleTypeSelect = document.getElementById('scaleTypeSelect');
 const playBtn = document.getElementById('playBtn');
 
 let currentNotes = [];
-// ✨ 修正:ドットとハイライトの両方を保持できるようにする
+// ドットとハイライトの両方を保持できるようにする
 let keyElements = {};
 
 function getSlotName(note) {
@@ -39,7 +39,7 @@ function renderScale() {
     const degree = degrees[index];
     const slotName = getSlotName(note);
 
-    // ✨ 新規追加:鍵盤全体を覆うハイライト要素
+    // 鍵盤全体を覆うハイライト要素
     const highlight = document.createElement('div');
     highlight.className = 'key-highlight';
     highlight.setAttribute('slot', slotName);
@@ -68,7 +68,7 @@ async function playScale() {
   Tone.Transport.cancel(0);
   synth.releaseAll();
 
-  // ✨ 修正:ドットとハイライトの両方をリセット
+  // ドットとハイライトの両方をリセット
   Object.values(keyElements).forEach((els) => {
     els.dot.classList.remove('active');
     els.highlight.classList.remove('active');
@@ -85,7 +85,7 @@ async function playScale() {
       Tone.Draw.schedule(() => {
         const els = keyElements[note];
         if (els) {
-          // ✨ 修正:ドットとハイライトの両方をアクティブに
+          // ドットとハイライトの両方をアクティブに
           els.dot.classList.add('active');
           els.highlight.classList.add('active');
 
@@ -108,7 +108,7 @@ scaleTypeSelect.addEventListener('change', renderScale);
 playBtn.addEventListener('click', playScale);
 
 // ==========================================
-// ✨ 手動クリック(タップ)で弾く機能 ✨
+// 手動クリック(タップ)で弾く機能
 // ==========================================
 let activeManualNotes = {};
 
