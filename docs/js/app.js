@@ -110,72 +110,78 @@ playBtn.addEventListener('click', playScale);
 // ==========================================
 // ✨ 手動クリック(タップ)で弾く機能 ✨
 // ==========================================
-
-// 指を離した時に音とハイライトを消すため、現在押している音を記録しておく変数
 let activeManualNotes = {};
 
-piano.addEventListener('pointerdown', async (e) => {
-  // ブラウザのデフォルトの動作(スクロールなど)を少し防ぐ
-  e.preventDefault();
-  await Tone.start();
+function playManualKey(e) {
+  // 1. iOS対策: awaitを使わず、触った瞬間に「同期的に」叩き起こす!
+  Tone.start();
 
-  // e.composedPath() で、クリックされた要素の「奥底」まで覗き見する
-  const path = e.composedPath();
+  // pointerIdがない場合(古いブラウザ等)は 'mouse' にする
+  const pointerId = e.pointerId !== undefined ? e.pointerId : 'mouse';
 
-  // 触った要素の中から「part属性に "key" が含まれるもの(=鍵盤そのもの)」を探す
-  const keyElement = path.find((el) => el.part && el.part.contains('key'));
+  // 2. スタック防止: 既にその指の記録が残っていたら、一度強制リセットする
+  if (activeManualNotes[pointerId]) {
+    synth.triggerRelease(activeManualNotes[pointerId].noteName);
+    activeManualNotes[pointerId].element.remove();
+    delete activeManualNotes[pointerId];
+  }
+
+  // 3. 要素の特定(iOS SafariのShadow DOMの仕様違いにも耐える堅牢な探し方)
+  const path = e.composedPath ? e.composedPath() : [];
+  let keyElement = path.find((el) => el && el.getAttribute && (el.getAttribute('part') || '').includes('key'));
+
+  // 【最終奥義】もし見つからなければ、画面のタップ座標から直接Shadow DOMの中を貫通して探す
+  if (!keyElement && piano.shadowRoot) {
+    const target = piano.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+    if (target) {
+      keyElement = target.closest('[part*="key"]');
+    }
+  }
 
   if (keyElement) {
-    // 鍵盤の中には <slot name="note-C4"> のような要素が必ず入っているので、それを見つける
     const slot = keyElement.querySelector('slot');
     if (!slot) return;
 
-    // "note-C4" などの名前を取得
     const slotName = slot.getAttribute('name');
-
-    // Tone.jsが読める音名("C4"や"C#4")に変換する
     const noteName = slotName.replace('note-', '').replace('s', '#');
 
-    // 1. 音を鳴らし始める(指を離すまで鳴り続ける)
     synth.triggerAttack(noteName);
 
-    // 2. 光らせるためのハイライト要素をその場で作る
     const manualHighlight = document.createElement('div');
     manualHighlight.className = 'key-highlight active';
     manualHighlight.setAttribute('slot', slotName);
 
-    // スケールの色指定を無視して、手動クリック用は分かりやすく「黄色(または白)」などで光らせる
-    manualHighlight.style.backgroundColor = 'rgba(255, 235, 59, 0.5)';
-    // manualHighlight.style.zIndex = '2'; // スケールのハイライトより上に表示
+    // 手動タップ用は分かりやすく黄色で光らせる
+    manualHighlight.style.backgroundColor = 'rgba(255, 235, 59, 0.6)';
 
     piano.appendChild(manualHighlight);
 
-    // 指を離した時に消せるように保存しておく
-    activeManualNotes[e.pointerId] = {
+    activeManualNotes[pointerId] = {
       noteName: noteName,
       element: manualHighlight,
     };
   }
-});
+}
 
-// 指を離した時(またはポインターが画面外に外れた時)の処理
-function handlePointerUp(e) {
-  const activeNote = activeManualNotes[e.pointerId];
+function releaseManualKey(e) {
+  const pointerId = e.pointerId !== undefined ? e.pointerId : 'mouse';
+  const activeNote = activeManualNotes[pointerId];
+
   if (activeNote) {
-    // 音を止める
     synth.triggerRelease(activeNote.noteName);
-
-    // ハイライト要素を消す
     activeNote.element.remove();
-
-    // 記録から削除
-    delete activeManualNotes[e.pointerId];
+    delete activeManualNotes[pointerId];
   }
 }
 
-piano.addEventListener('pointerup', handlePointerUp);
-piano.addEventListener('pointercancel', handlePointerUp);
-// 鍵盤を押したまま外にスライドした時も止める
-piano.addEventListener('pointerout', handlePointerUp);
+// iOSでの無駄なスクロールや拡大を止めるため preventDefault を必ず呼ぶ
+piano.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  playManualKey(e);
+});
+
+piano.addEventListener('pointerup', releaseManualKey);
+piano.addEventListener('pointercancel', releaseManualKey);
+piano.addEventListener('pointerout', releaseManualKey);
 
 renderScale();
