@@ -1,5 +1,6 @@
 @charset "utf-8";
 /*@import url('./styleChecker.css');*/
+
 body {
   font-family: sans-serif;
   text-align: center;
@@ -42,7 +43,42 @@ button:hover {
   position: relative;
 }
 
-/* === ドット(マーカー)の共通スタイル === */
+/* ✨ 鍵盤全体を覆うハイライトフィルム ✨ */
+.key-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  /* ❌ ここにあった z-index: 1; を削除しました!これだけで直ります! */
+}
+
+/* 鳴っている時(アクティブ)にフィルムを表示 */
+.key-highlight.active {
+  opacity: 1;
+}
+
+/* 鍵盤ハイライトの度数カラー */
+.key-highlight[data-degree='1'] {
+  background-color: rgba(255, 82, 82, 0.4);
+}
+.key-highlight[data-degree='3'] {
+  background-color: rgba(255, 177, 66, 0.4);
+}
+.key-highlight[data-degree='5'] {
+  background-color: rgba(51, 217, 178, 0.4);
+}
+.key-highlight[data-degree='7'] {
+  background-color: rgba(112, 111, 211, 0.4);
+}
+.key-highlight:not([data-degree='1']):not([data-degree='3']):not([data-degree='5']):not([data-degree='7']) {
+  background-color: rgba(52, 172, 224, 0.4);
+}
+
+/* === ドット(マーカー)のスタイル === */
 .dot {
   position: absolute;
   bottom: 12px;
@@ -57,47 +93,34 @@ button:hover {
   justify-content: center;
   align-items: center;
   pointer-events: none;
+  color: white;
+  opacity: 1;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   transition: all 0.15s ease;
-}
 
-/* --- 下地状態(グレー・半透明) --- */
-.dot.guide {
-  background-color: #9e9e9e;
-  color: white;
-  z-index: 5;
-  opacity: 0.6;
-}
-
-/* --- アクティブ状態(共通の動き) --- */
-.dot.active {
-  opacity: 1;
+  /* ドットは黒鍵に被っても良い(常に最前面)ので、z-indexをつけておきます */
   z-index: 10;
-  transform: translateX(-50%) scale(1.2); /* ピョコッと大きくする */
 }
 
-/* ✨ 度数ごとの色分け設定 ✨ */
-/* 1度 (ルート):赤色 */
-.dot.active[data-degree='1'] {
+/* ドットの度数カラー */
+.dot[data-degree='1'] {
   background-color: #ff5252;
 }
-
-/* 3度 (サード):オレンジ色 (メジャー/マイナーを決定づける音) */
-.dot.active[data-degree='3'] {
+.dot[data-degree='3'] {
   background-color: #ffb142;
 }
-
-/* 5度 (フィフス):緑色 (ルートを支える安定した音) */
-.dot.active[data-degree='5'] {
+.dot[data-degree='5'] {
   background-color: #33d9b2;
 }
-
-/* 7度 (セブンス):紫色 (オシャレな響きを加える音) */
-.dot.active[data-degree='7'] {
+.dot[data-degree='7'] {
   background-color: #706fd3;
 }
-
-/* それ以外の経過音 (2, 4, 6など):青色 */
-.dot.active:not([data-degree='1']):not([data-degree='3']):not([data-degree='5']):not([data-degree='7']) {
+.dot:not([data-degree='1']):not([data-degree='3']):not([data-degree='5']):not([data-degree='7']) {
   background-color: #34ace0;
+}
+
+/* ✨ アクティブ状態のドットのハイライト(重複記述を削除し、ここにまとめました) ✨ */
+.dot.active {
+  transform: translateX(-50%) scale(1.3);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px #ffeb3b, 0 4px 10px rgba(0, 0, 0, 0.5);
 }
