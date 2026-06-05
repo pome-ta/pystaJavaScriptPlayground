@@ -1,13 +1,32 @@
 @charset "utf-8";
-/*@import url('./styleChecker.css');*/
 
+/* ==========================================
+  モダンWeb対応: テーマカラーの定義 (CSS変数)
+========================================== */
+:root {
+  --color-deg1: 255, 82, 82; /* 赤 */
+  --color-deg3: 255, 177, 66; /* オレンジ */
+  --color-deg5: 51, 217, 178; /* 緑 */
+  --color-deg7: 112, 111, 211; /* 紫 */
+  --color-other: 52, 172, 224; /* 青 (その他) */
+}
+
+/* ==========================================
+   1. ベーススタイル
+========================================== */
 body {
   font-family: sans-serif;
   text-align: center;
   margin-top: 50px;
 }
 
+/* 操作パネルを綺麗に並べるためのFlexbox化 */
 .controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
@@ -15,10 +34,10 @@ select,
 button {
   padding: 8px 16px;
   font-size: 16px;
-  margin: 0 5px;
   border-radius: 5px;
 }
 
+/* ボタンのスタイルと再生中の赤色変化 */
 button {
   cursor: pointer;
   background-color: #4caf50;
@@ -26,23 +45,56 @@ button {
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
-
 button:hover {
   background-color: #45a049;
 }
+button.playing {
+  background-color: #e74c3c;
+}
+button.playing:hover {
+  background-color: #c0392b;
+}
 
+/*  追加:ループラベルのスタイル  */
+.loop-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  background-color: #f1f1f1;
+  padding: 8px 12px;
+  border-radius: 5px;
+}
+.loop-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* テンポコントロール */
+.tempo-control {
+  font-weight: bold;
+  color: #333;
+}
+.tempo-control input[type='range'] {
+  width: 200px;
+  cursor: pointer;
+}
+
+/* ==========================================
+   2. ピアノ本体 (スマホ対応)
+========================================== */
 #piano {
   width: 100%;
   max-width: 700px;
   margin: 0 auto 30px;
-
-  /* スマホのスクロールやズームを防止 */
   touch-action: none;
-
-  /* iOS特有の「テキスト選択」や「長押しメニュー」を完全に封じる */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #piano::part(key-white),
@@ -50,7 +102,9 @@ button:hover {
   position: relative;
 }
 
-/* 鍵盤全体を覆うハイライトフィルム */
+/* ==========================================
+   3. 鍵盤ハイライトフィルム
+========================================== */
 .key-highlight {
   position: absolute;
   top: 0;
@@ -60,31 +114,29 @@ button:hover {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease;
+  background-color: rgba(var(--color-other), 0.4);
 }
 
-/* 鳴っている時(アクティブ)にフィルムを表示 */
 .key-highlight.active {
   opacity: 1;
 }
 
-/* 鍵盤ハイライトの度数カラー */
 .key-highlight[data-degree='1'] {
-  background-color: rgba(255, 82, 82, 0.4);
+  background-color: rgba(var(--color-deg1), 0.4);
 }
 .key-highlight[data-degree='3'] {
-  background-color: rgba(255, 177, 66, 0.4);
+  background-color: rgba(var(--color-deg3), 0.4);
 }
 .key-highlight[data-degree='5'] {
-  background-color: rgba(51, 217, 178, 0.4);
+  background-color: rgba(var(--color-deg5), 0.4);
 }
 .key-highlight[data-degree='7'] {
-  background-color: rgba(112, 111, 211, 0.4);
-}
-.key-highlight:not([data-degree='1']):not([data-degree='3']):not([data-degree='5']):not([data-degree='7']) {
-  background-color: rgba(52, 172, 224, 0.4);
+  background-color: rgba(var(--color-deg7), 0.4);
 }
 
-/* === ドット(マーカー)のスタイル === */
+/* ==========================================
+   4. ドット(マーカー)
+========================================== */
 .dot {
   position: absolute;
   bottom: 12px;
@@ -103,29 +155,23 @@ button:hover {
   opacity: 1;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   transition: all 0.15s ease;
-
-  /* ドットは黒鍵に被っても良い(常に最前面)ので、z-indexをつけておきます */
   z-index: 10;
+  background-color: rgb(var(--color-other));
 }
 
-/* ドットの度数カラー */
 .dot[data-degree='1'] {
-  background-color: #ff5252;
+  background-color: rgb(var(--color-deg1));
 }
 .dot[data-degree='3'] {
-  background-color: #ffb142;
+  background-color: rgb(var(--color-deg3));
 }
 .dot[data-degree='5'] {
-  background-color: #33d9b2;
+  background-color: rgb(var(--color-deg5));
 }
 .dot[data-degree='7'] {
-  background-color: #706fd3;
-}
-.dot:not([data-degree='1']):not([data-degree='3']):not([data-degree='5']):not([data-degree='7']) {
-  background-color: #34ace0;
+  background-color: rgb(var(--color-deg7));
 }
 
-/* アクティブ状態のドットのハイライト */
 .dot.active {
   transform: translateX(-50%) scale(1.3);
   box-shadow: 0 0 0 2px #fff, 0 0 0 6px #ffeb3b, 0 4px 10px rgba(0, 0, 0, 0.5);
