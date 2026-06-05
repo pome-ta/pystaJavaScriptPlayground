@@ -1,4 +1,35 @@
+
+//import p5 from 'p5';
+
+
+//window.p5 = p5;
+//console.log(window.p5)
+//console.log(p5)
+console.log(window.setup);
+
+const v = 360;
+
+
+
+
+
+function setup() {
+  createCanvas(200, 200);
+  //colorMode(HSL, v, 1, 1);
+}
+
+function draw() {
+  //background(frameCount % v, 1, 0.5);
+  background(220);
+}
+
+Object.assign(window, {setup,draw})
+
+
+
+/*
 import p5 from 'p5';
+console.log(window)
 
 const sketch = (p) => {
   p.setup = () => {
@@ -12,7 +43,7 @@ const sketch = (p) => {
 };
 
 new p5(sketch);
-
+*/
 
 /*
 import * as Tone from 'tone';
