@@ -430,7 +430,7 @@
           const bridge = getServerBridge();
 
           // 注意: index.html と同じ階層に __sw__.js を配置している前提のパスです
-          await bridge.initServiceWorker({ swUrl: '/__sw__.js' });
+          await bridge.initServiceWorker({ swUrl: './__sw__.js' });
           log('Service Worker ready');
 
           bridge.registerServer(devServer, 3003);
