@@ -10,10 +10,7 @@
     <script type="importmap">
       {
         "imports": {
-          "eruda": "https://esm.sh/eruda",
-          "tone": "https://esm.sh/tone",
-          "tonal": "https://esm.sh/@tonaljs/tonal",
-          "@hsablonniere/musiq/": "https://esm.sh/@hsablonniere/musiq/"
+          "eruda": "https://esm.sh/eruda"
         }
       }
     </script>
@@ -28,42 +25,8 @@
     <link rel="stylesheet" href="./css/style.css" />
     <script type="module" src="./js/app.js"></script>
 
-    <title>音楽理論学習ツール</title>
+    <title></title>
   </head>
   <body>
-    <h2>スケール学習</h2>
-
-    <div class="controls">
-      <select id="rootSelect">
-        <option value="C4">C</option>
-        <option value="D4">D</option>
-        <option value="E4">E</option>
-        <option value="F4">F</option>
-        <option value="G4">G</option>
-        <option value="A4">A</option>
-        <option value="B4">B</option>
-      </select>
-
-      <select id="scaleTypeSelect">
-        <option value="major">メジャー</option>
-        <option value="minor">ナチュラルマイナー</option>
-        <option value="harmonic minor">ハーモニックマイナー</option>
-        <option value="pentatonic">ペンタトニック</option>
-      </select>
-
-      <button id="playBtn">再生</button>
-
-      <label class="loop-label">
-        <input type="checkbox" id="loopToggle" />
-        ループ
-      </label>
-    </div>
-
-    <div class="controls tempo-control">
-      <label for="bpmSlider">テンポ: <span id="bpmDisplay">120</span> BPM</label>
-      <input type="range" id="bpmSlider" min="60" max="240" value="120" step="1" />
-    </div>
-
-    <mq-piano id="piano" start-note="A3" end-note="D6" mode="centered" preserve-ratio></mq-piano>
   </body>
 </html>
