@@ -490,19 +490,26 @@ if __name__ == '__main__':
   from rbedge.app import App
   from objc_frameworks.UIKit import UIModalPresentationStyle
 
-  from localServer import LocalServer
+  def run_app(
+    url_path,
+    presentation_style=UIModalPresentationStyle.fullScreen,
+  ):
+    main_vc = WebViewController.alloc().initWithLocationResource_(url_path)
+    #presentation_style = UIModalPresentationStyle.pageSheet
+    app = App(main_vc, presentation_style)
+    app.present(NavigationController)
+
+  IS_SERVER = False  # note: server or local `index.html`
 
   ROOT_PATH = Path(__file__).parents[0]
   index_path = ROOT_PATH / '../docs'
 
-  with LocalServer(root_dir=str(index_path.resolve())) as server:
-    url = server.url
+  if (resolve_path := index_path.resolve()) and IS_SERVER:
+    from localServer import LocalServer
 
-    main_vc = WebViewController.alloc().initWithLocationResource_(url)
-    presentation_style = UIModalPresentationStyle.fullScreen
-    #presentation_style = UIModalPresentationStyle.pageSheet
-
-    app = App(main_vc, presentation_style)
-    app.present(NavigationController)
+    with LocalServer(root_dir=str(resolve_path)) as server:
+      run_app(server.url)
+  else:
+    run_app(resolve_path / 'index.html')
 
 
