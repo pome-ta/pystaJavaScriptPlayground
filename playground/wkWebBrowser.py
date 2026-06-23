@@ -311,7 +311,7 @@ class WebViewController(UIViewController):
     else:
       self.webView.loadRequest_(request)
 
-    self.view.backgroundColor = UIColor.systemBackgroundColor()
+    self.view.backgroundColor = UIColor.secondarySystemBackgroundColor()
 
     self.setupBarButtonItems()
     self.setupLayoutConstraint()
