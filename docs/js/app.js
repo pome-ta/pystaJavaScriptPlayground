@@ -1,23 +1,22 @@
 import { createContainer } from 'almostnode';
 
-const { vfs, runtime } = createContainer();
+const { vfs, npm, runtime } = createContainer();
+
+// Install Express from npm
+await npm.install('express');
 
 vfs.writeFileSync(
-  '/server.js',
+  '/app.js',
   `
-  const http = require('http');
+  const express = require('express');
+  const app = express();
 
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<h1>Hello from the browser!</h1>');
+  app.get('/', (req, res) => {
+    res.json({ message: 'Express in the browser!' });
   });
 
-  server.listen(3000, () => {
-    console.log('Server running on port 3000');
-  });
+  app.listen(3000);
 `,
 );
 
-runtime.runFile('/server.js');
-
-
+runtime.runFile('/app.js');
