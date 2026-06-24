@@ -499,7 +499,7 @@ if __name__ == '__main__':
     app = App(main_vc, presentation_style)
     app.present(NavigationController)
 
-  IS_SERVER = True  # note: server or local `index.html`
+  IS_SERVER = False  # note: server or local `index.html`
 
   ROOT_PATH = Path(__file__).parents[0]
   index_path = ROOT_PATH / '../docs'

@@ -1,37 +1,23 @@
-console.log('hoge');
-/*
 import { createContainer } from 'almostnode';
 
-const { vfs, runtime, npm } = createContainer();
+const { vfs, runtime } = createContainer();
 
-// Write a file to the virtual filesystem
 vfs.writeFileSync(
-  '/hello.js',
+  '/server.js',
   `
-  console.log('Hello from almostnode!');
+  const http = require('http');
+
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<h1>Hello from the browser!</h1>');
+  });
+
+  server.listen(3000, () => {
+    console.log('Server running on port 3000');
+  });
 `,
 );
 
-// Execute it
-runtime.runFile('/hello.js');
-
-*/
-import { WebContainer } from '@webcontainer/api';
+runtime.runFile('/server.js');
 
 
-
-//const webcontainerInstance = await WebContainer.boot();
-//console.log(webcontainerInstance)
-console.log({
-  crossOriginIsolated,
-  SharedArrayBuffer: typeof SharedArrayBuffer
-});
-
-(async () => {
-  try {
-    const wc = await WebContainer.boot();
-    console.log('boot success', wc);
-  } catch (e) {
-    console.error('boot failed', e);
-  }
-})();
