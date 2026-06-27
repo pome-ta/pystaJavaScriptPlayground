@@ -1,4 +1,3 @@
+import * as tsvfs from 'https://esm.sh/@typescript/vfs';
 
-import * as vfs from 'https://esm.sh/@typescript/vfs';
-
-console.log(vfs)
+console.log(tsvfs);
