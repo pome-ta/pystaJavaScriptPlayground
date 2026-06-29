@@ -43,7 +43,7 @@ const env = tsvfs.createVirtualTypeScriptEnvironment(
 // console.log(ts.displayPartsToString(info.documentation));
 
 const code = `
-document.
+console.
 `;
 
 env.createFile('/main.ts', code);
