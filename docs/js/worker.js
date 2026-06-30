@@ -23,10 +23,10 @@ function postLog(message, type = 3) {
   try {
     self.postMessage({
       jsonrpc: '2.0',
-      method: 'window/logMessage',
+      method: 'worker/log',
       params: {
         type,
-        message: `[${formatTime()}] [LSP Worker] ${message}`,
+        message: `[${formatTime()}] [Worker] ${message}`,
       },
     });
   } catch (e) {
@@ -45,12 +45,15 @@ class BrowserLanguageServer {
   // 1. compilerOptions をクラス内で一元管理
   #compilerOptions = {
     target: ts.ScriptTarget.ES2022,
-    // module: ts.ModuleKind.ESNext,
-    // strict: true,
-    // skipLibCheck: true,
-    // noEmit: true,
-    // allowImportingTsExtensions: true,
-    // allowArbitraryExtensions: true,
+    module: ts.ModuleKind.ESNext,
+    strict: true,
+    skipLibCheck: true,
+    noEmit: true,
+    allowImportingTsExtensions: true,
+    allowArbitraryExtensions: true,
+    allowJs: true,
+    checkJs: true,
+    noUnusedLocals: true,
   };
 
   #requestHandlers = {
@@ -69,7 +72,7 @@ class BrowserLanguageServer {
   #getOffsetFromLSPPosition(uri, position) {
     const sourceFile = this.#env.getSourceFile(uri);
     if (!sourceFile) {
-      return 0;
+      throw new Error(`Source file not found: ${uri}`);
     }
     // LSPのPosition (line, character) は0ベース。TSのAPIも0ベースを想定しています。
     return ts.getPositionOfLineAndCharacter(sourceFile, position.line, position.character);
@@ -117,11 +120,13 @@ class BrowserLanguageServer {
   // --- ユーティリティ: TSのOffsetをLSPのPositionに変換 ---
   #getLSPPositionFromOffset(uri, offset) {
     const sourceFile = this.#env.getSourceFile(uri);
-    // if (!sourceFile) {
-    //   return { line: 0, character: 0 };
-    // }
-    // return ts.getLineAndCharacterOfPosition(sourceFile, offset);
-    return !sourceFile ? { line: 0, character: 0 } : ts.getLineAndCharacterOfPosition(sourceFile, offset);
+    if (!sourceFile) {
+      throw new Error(`Source file not found: ${uri}`);
+    }
+    return ts.getLineAndCharacterOfPosition(sourceFile, offset);
+    // return !sourceFile
+    //   ? { line: 0, character: 0 }
+    //   : ts.getLineAndCharacterOfPosition(sourceFile, offset);
   }
 
   // --- ユーティリティ: TSのDiagnosticCategoryをLSPのDiagnosticSeverityに変換 ---
@@ -282,8 +287,8 @@ class BrowserLanguageServer {
       } // ホバー情報がない場所（空白など）は null を返す
 
       // 2. TSが持っている情報を文字列に変換
-      const displayString = ts.displayPartsToString(info.displayParts);
-      const docString = ts.displayPartsToString(info.documentation);
+      const displayString = ts.displayPartsToString(info.displayParts || []);
+      const docString = ts.displayPartsToString(info.documentation || []);
 
       // 3. LSPの Hover フォーマット (Markdown) に変換して返す
       const contents = {
@@ -314,8 +319,15 @@ class BrowserLanguageServer {
 
       const diagnostics = tsDiagnostics.map((diag) => {
         // エラー位置の計算（開始位置と終了位置）
-        const start = this.#getLSPPositionFromOffset(uri, diag.start || 0);
-        const end = this.#getLSPPositionFromOffset(uri, (diag.start || 0) + (diag.length || 0));
+        // const start = this.#getLSPPositionFromOffset(uri, diag.start || 0);
+        // const end = this.#getLSPPositionFromOffset(
+        //   uri,
+        //   (diag.start || 0) + (diag.length || 0),
+        // );
+        const startOffset = diag.start ?? 0;
+        const endOffset = startOffset + (diag.length ?? 0);
+        const start = this.#getLSPPositionFromOffset(uri, startOffset);
+        const end = this.#getLSPPositionFromOffset(uri, endOffset);
 
         return {
           range: { start, end },

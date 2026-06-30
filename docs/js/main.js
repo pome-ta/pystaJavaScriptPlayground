@@ -58,7 +58,7 @@ const client = new LSPClient({
     //   return true;
     // },
     // Worker からの window/logMessage を受け取って console に流す
-    'window/logMessage': (client, { type, message }) => {
+    'worker/log': (client, { type, message }) => {
       const logType = LOG_LEVEL_MAP[type] ?? 'log';
       console[logType](`${logType} : ${message}`);
       return true;
@@ -74,11 +74,39 @@ const client = new LSPClient({
     // },
   },
 }).connect(transport);
+// @ts-check
+const initialCode = `
+
+// Error: 存在しない変数を使用
+console.log(notDefinedVar);
+
+// Warning: 宣言したが未使用
+const unusedValue = 42;
+
+function test() {
+  // Warning: 宣言したが未使用 (ここに波線が出ます)
+  const unusedValueuu = 42;
+}
+
+// Information: JSDoc コメントからの型推論表示を確認
+/**
+ * Adds two numbers together.
+ * @param {number} a
+ * @param {number} b
+ */
+function add(a, b) {
+  return a + b;
+}
+
+// Hint: 意図的に '==' を使用 → LSP が "use '===' instead" の提案を出す場合がある
+if (1 == '1') {
+  console.log('hint test');
+}`;
 
 const editor = new EditorView({
   state: EditorState.create({
-    doc: '',
-    extensions: [basicSetup, javascriptLanguage, client.plugin('file:///main.ts')],
+    doc: initialCode,
+    extensions: [basicSetup, javascriptLanguage, client.plugin('file:///main.js')],
   }),
   parent: document.body,
 });
