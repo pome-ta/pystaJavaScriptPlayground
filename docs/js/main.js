@@ -41,14 +41,37 @@ const logHandlers = new Map([
   [3, (msg) => console.info(msg)],
 ]);
 
+// ファイルの上部やクラスのプロパティとして定義しておく
+const LOG_LEVEL_MAP = {
+  1: 'error',
+  2: 'warn',
+  3: 'info',
+  4: 'log',
+};
+
 const client = new LSPClient({
   extensions: languageServerExtensions(),
   notificationHandlers: {
+    // // Worker からの window/logMessage を受け取って console に流す
+    // 'window/logMessage': (client, { type, message }) => {
+    //   (logHandlers.get(type) ?? ((msg) => console.log(`${msg}`)))(`${type}:  ${message}`);
+    //   return true;
+    // },
     // Worker からの window/logMessage を受け取って console に流す
     'window/logMessage': (client, { type, message }) => {
-      (logHandlers.get(type) ?? ((msg) => console.log(msg)))(message);
+      const logType = LOG_LEVEL_MAP[type] ?? 'log';
+      console[logType](`${logType} : ${message}`);
       return true;
     },
+
+    // Worker からの window/logMessage を受け取って console に流す
+    // 'window/logMessage': (client, params) => {
+    //   if (params.type === 1) console.error(`${params.type}:${params.message}`);
+    //   else if (params.type === 2) console.warn(`${params.type}:${params.message}`);
+    //   else console.log(`${params.type}:${params.message}`);
+
+    //   return true; // デフォルトのハンドラを上書きする
+    // },
   },
 }).connect(transport);
 

@@ -40,21 +40,23 @@ class BrowserLanguageServer {
   #env;
   #ready = false;
   #envId = 0;
+  #documentTimers = new Map(); // Diagnosticsのデバウンス用
 
   // 1. compilerOptions をクラス内で一元管理
   #compilerOptions = {
     target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-    skipLibCheck: true,
-    noEmit: true,
-    allowImportingTsExtensions: true,
-    allowArbitraryExtensions: true,
+    // module: ts.ModuleKind.ESNext,
+    // strict: true,
+    // skipLibCheck: true,
+    // noEmit: true,
+    // allowImportingTsExtensions: true,
+    // allowArbitraryExtensions: true,
   };
 
   #requestHandlers = {
     initialize: this.#handleInitialize.bind(this),
     'textDocument/completion': this.#handleCompletion.bind(this),
+    'textDocument/hover': this.#handleHover.bind(this),
   };
 
   #notificationHandlers = {
@@ -64,16 +66,16 @@ class BrowserLanguageServer {
     'textDocument/didClose': this.#handleDidClose.bind(this),
   };
   // --- ユーティリティ: 座標変換 ---
-
   #getOffsetFromLSPPosition(uri, position) {
     const sourceFile = this.#env.getSourceFile(uri);
-    if (!sourceFile) return 0;
+    if (!sourceFile) {
+      return 0;
+    }
     // LSPのPosition (line, character) は0ベース。TSのAPIも0ベースを想定しています。
     return ts.getPositionOfLineAndCharacter(sourceFile, position.line, position.character);
   }
 
   // --- ユーティリティ: TSのKindをLSPのCompletionItemKind(数値)に変換 ---
-
   #getCompletionItemKind(tsKind) {
     // 参照: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
     switch (tsKind) {
@@ -112,8 +114,33 @@ class BrowserLanguageServer {
     }
   }
 
-  // --- ハンドラ: 補完の実行 ---
+  // --- ユーティリティ: TSのOffsetをLSPのPositionに変換 ---
+  #getLSPPositionFromOffset(uri, offset) {
+    const sourceFile = this.#env.getSourceFile(uri);
+    // if (!sourceFile) {
+    //   return { line: 0, character: 0 };
+    // }
+    // return ts.getLineAndCharacterOfPosition(sourceFile, offset);
+    return !sourceFile ? { line: 0, character: 0 } : ts.getLineAndCharacterOfPosition(sourceFile, offset);
+  }
 
+  // --- ユーティリティ: TSのDiagnosticCategoryをLSPのDiagnosticSeverityに変換 ---
+  #getDiagnosticSeverity(category) {
+    switch (category) {
+      case ts.DiagnosticCategory.Error:
+        return 1; // Error
+      case ts.DiagnosticCategory.Warning:
+        return 2; // Warning
+      case ts.DiagnosticCategory.Message:
+        return 3; // Information
+      case ts.DiagnosticCategory.Suggestion:
+        return 4; // Hint
+      default:
+        return 1;
+    }
+  }
+
+  // --- ハンドラ: 補完の実行 ---
   async #handleCompletion(params) {
     const uri = params.textDocument.uri;
     const position = params.position;
@@ -220,6 +247,8 @@ class BrowserLanguageServer {
     const initialText = text.trim() === '' ? '\n' : text;
     this.#env.createFile(uri, initialText);
     postLog(`Opened file: ${uri}`);
+
+    this.#triggerDiagnostics(uri);
   }
 
   async #handleDidChange(params) {
@@ -227,12 +256,102 @@ class BrowserLanguageServer {
     const text = params.contentChanges[0].text;
     const validText = text.trim() === '' ? '\n' : text;
     this.#env.updateFile(uri, validText);
+
+    this.#triggerDiagnostics(uri);
   }
 
   async #handleDidClose(params) {
     const { uri } = params.textDocument;
     this.#env.deleteFile(uri);
     postLog(`Closed file: ${uri}`);
+  }
+
+  // --- ハンドラ: Hover (ホバー情報の取得) ---
+
+  async #handleHover(params) {
+    // LSPから送られてくる params は { textDocument: { uri: "..." }, position: { ... } }
+    const uri = params.textDocument.uri;
+    const position = params.position;
+    const offset = this.#getOffsetFromLSPPosition(uri, position);
+
+    try {
+      // 1. TS Compiler API からホバー先の情報を取得 (QuickInfo)
+      const info = this.#env.languageService.getQuickInfoAtPosition(uri, offset);
+      if (!info) {
+        return null;
+      } // ホバー情報がない場所（空白など）は null を返す
+
+      // 2. TSが持っている情報を文字列に変換
+      const displayString = ts.displayPartsToString(info.displayParts);
+      const docString = ts.displayPartsToString(info.documentation);
+
+      // 3. LSPの Hover フォーマット (Markdown) に変換して返す
+      const contents = {
+        kind: 'markdown',
+        value: [`\`\`\`typescript\n${displayString}\n\`\`\``, docString].filter(Boolean).join('\n\n---\n\n'), // コメント(docString)があれば横線で区切る
+      };
+
+      return {
+        contents,
+        range: {
+          start: this.#getLSPPositionFromOffset(uri, info.textSpan.start),
+          end: this.#getLSPPositionFromOffset(uri, info.textSpan.start + info.textSpan.length),
+        },
+      };
+    } catch (e) {
+      postLog(`Hover error: ${e.message}`, 1);
+      return null;
+    }
+  }
+
+  // --- ハンドラ: Diagnostics (エラー診断) の実行と送信 ---
+  #publishDiagnostics(uri) {
+    try {
+      // 構文エラー(Syntactic)と意味的エラー(Semantic)の両方を取得
+      const syntactic = this.#env.languageService.getSyntacticDiagnostics(uri);
+      const semantic = this.#env.languageService.getSemanticDiagnostics(uri);
+      const tsDiagnostics = [...syntactic, ...semantic];
+
+      const diagnostics = tsDiagnostics.map((diag) => {
+        // エラー位置の計算（開始位置と終了位置）
+        const start = this.#getLSPPositionFromOffset(uri, diag.start || 0);
+        const end = this.#getLSPPositionFromOffset(uri, (diag.start || 0) + (diag.length || 0));
+
+        return {
+          range: { start, end },
+          severity: this.#getDiagnosticSeverity(diag.category),
+          source: 'typescript',
+          // メッセージが入れ子になっている場合を考慮して平坦化
+          message: ts.flattenDiagnosticMessageText(diag.messageText, '\n'),
+        };
+      });
+
+      // クライアント(CodeMirror)へ通知をPushする
+      self.postMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/publishDiagnostics',
+        params: {
+          uri,
+          diagnostics,
+        },
+      });
+      postLog(`Published ${diagnostics.length} diagnostics for ${uri}`, 4);
+    } catch (e) {
+      postLog(`Diagnostics error: ${e.message}`, 1);
+    }
+  }
+
+  // デバウンス処理付きのトリガー
+  #triggerDiagnostics(uri) {
+    if (this.#documentTimers.has(uri)) {
+      clearTimeout(this.#documentTimers.get(uri));
+    }
+    // 300ms 入力がなければ診断を実行
+    const timer = setTimeout(() => {
+      this.#publishDiagnostics(uri);
+      this.#documentTimers.delete(uri);
+    }, 300);
+    this.#documentTimers.set(uri, timer);
   }
 
   async #init() {
