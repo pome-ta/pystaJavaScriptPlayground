@@ -29,7 +29,7 @@ function createWorkerTransport(worker) {
   };
 }
 
-const worker = new Worker('./js/worker.js', {
+const worker = new Worker('./js/lsp-worker/worker.js', {
   type: 'module',
 });
 
@@ -76,7 +76,6 @@ const client = new LSPClient({
 }).connect(transport);
 // @ts-check
 const initialCode = `
-
 // Error: 存在しない変数を使用
 console.log(notDefinedVar);
 
