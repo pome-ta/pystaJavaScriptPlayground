@@ -1,60 +1,53 @@
-import ts from 'https://esm.sh/typescript';
-import * as tsvfs from 'https://esm.sh/@typescript/vfs';
+import { EditorView } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { basicSetup } from 'codemirror';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
 
-const compilerOptions = {
-  target: ts.ScriptTarget.ES2022,
-  // allowJs: true,
-};
+import { LSPClient, languageServerExtensions } from '@codemirror/lsp-client';
+//import { createWorkerTransport } from "./WorkerTransport.js";
 
-const fsMap = await tsvfs.createDefaultMapFromCDN(
-  compilerOptions,
-  ts.version,
-  false,
-  ts,
-);
-// 初期ファイルを空文字 ("") にすると `createVirtualTypeScriptEnvironment()` が
-// TS6053 を投げる既知の問題があるため、"\n" を初期値として登録
-// fsMap.set('/main.ts', '\n');
+/**
+ * @param {Worker} worker
+ * @returns {import("@codemirror/lsp-client").Transport}
+ */
+export function createWorkerTransport(worker) {
+  const subscribers = new Set();
 
-const system = tsvfs.createSystem(fsMap);
-const env = tsvfs.createVirtualTypeScriptEnvironment(
-  system,
-  [],
-  ts,
-  compilerOptions,
-);
+  worker.addEventListener('message', ({ data }) => {
+    subscribers.forEach((subscriber) => {
+      subscriber(JSON.stringify(data));
+    });
+  });
 
-// 作成するコード
-// const code = `
-// document.body;
-// `;
+  return {
+    send(message) {
+      worker.postMessage(JSON.parse(message));
+    },
 
-// // 仮想ファイルを作成
-// env.createFile('/main.ts', code);
-// // "document" の位置を取得
+    subscribe(subscriber) {
+      subscribers.add(subscriber);
+    },
 
-// const position = code.indexOf('document');
-// // QuickInfo を取得
+    unsubscribe(subscriber) {
+      subscribers.delete(subscriber);
+    },
+  };
+}
 
-// const info = env.languageService.getQuickInfoAtPosition('/main.ts', position);
+const worker = new Worker('./worker.js', {
+  type: 'module',
+});
 
-// console.log(info);
-// console.log(ts.displayPartsToString(info.displayParts));
-// console.log(ts.displayPartsToString(info.documentation));
+const transport = createWorkerTransport(worker);
 
-const code = `
-console.
-`;
+const client = new LSPClient({
+  extensions: languageServerExtensions(),
+}).connect(transport);
 
-env.createFile('/main.ts', code);
-
-const position = code.indexOf('.') + 1;
-
-const completions = env.languageService.getCompletionsAtPosition(
-  '/main.ts',
-  position,
-  {},
-);
-
-console.log(completions);
-console.log(completions.entries.slice(0, 20));
+const editor = new EditorView({
+  state: EditorState.create({
+    doc: '',
+    extensions: [basicSetup, javascriptLanguage, client.plugin('file:///main.ts')],
+  }),
+  parent: document.body,
+});

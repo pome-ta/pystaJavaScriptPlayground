@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
@@ -10,14 +10,16 @@
     <script type="importmap">
       {
         "imports": {
-          "eruda": "https://esm.sh/eruda"
+          "eruda": "https://esm.sh/eruda",
+          "codemirror": "https://esm.sh/codemirror",
+          "@codemirror/": "https://esm.sh/@codemirror/"
         }
       }
     </script>
 
     <!-- eruda -->
     <script type="module">
-      import eruda from "eruda";
+      import eruda from 'eruda';
 
       eruda.init();
     </script>
