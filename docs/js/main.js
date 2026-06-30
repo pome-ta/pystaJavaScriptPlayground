@@ -14,6 +14,9 @@ export function createWorkerTransport(worker) {
   const subscribers = new Set();
 
   worker.addEventListener('message', ({ data }) => {
+    console.log(data)
+    if (data.method === "worker/log") {
+    }
     subscribers.forEach((subscriber) => {
       subscriber(JSON.stringify(data));
     });
@@ -34,7 +37,7 @@ export function createWorkerTransport(worker) {
   };
 }
 
-const worker = new Worker('./worker.js', {
+const worker = new Worker('./js/worker.js', {
   type: 'module',
 });
 

@@ -1,6 +1,31 @@
 import ts from 'https://esm.sh/typescript';
 import * as tsvfs from 'https://esm.sh/@typescript/vfs';
 
+
+
+
+// 投げっぱなしの通知 (Notification) を送る
+function sendNotification(method, params = {}) {
+  self.postMessage(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      method: method,
+      params: params,
+    }),
+  );
+}
+// 独自定義: ログ送信
+function postLog(message) {
+  sendNotification('worker/log', {
+    timestamp: new Date().toLocaleTimeString('ja-JP', {
+      hour12: false,
+      fractionalSecondDigits: 3,
+    }),
+    message: `[Worker] ${message}`,
+  });
+}
+
+postLog('hige')
 function uriToPath(uri) {
   return new URL(uri).pathname;
 }
