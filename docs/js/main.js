@@ -4,33 +4,25 @@ import { basicSetup } from 'codemirror';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 
 import { LSPClient, languageServerExtensions } from '@codemirror/lsp-client';
-//import { createWorkerTransport } from "./WorkerTransport.js";
 
 /**
  * @param {Worker} worker
  * @returns {import("@codemirror/lsp-client").Transport}
  */
-export function createWorkerTransport(worker) {
+function createWorkerTransport(worker) {
   const subscribers = new Set();
-
   worker.addEventListener('message', ({ data }) => {
-    console.log(data)
-    if (data.method === "worker/log") {
-    }
     subscribers.forEach((subscriber) => {
       subscriber(JSON.stringify(data));
     });
   });
-
   return {
     send(message) {
       worker.postMessage(JSON.parse(message));
     },
-
     subscribe(subscriber) {
       subscribers.add(subscriber);
     },
-
     unsubscribe(subscriber) {
       subscribers.delete(subscriber);
     },
@@ -43,8 +35,21 @@ const worker = new Worker('./js/worker.js', {
 
 const transport = createWorkerTransport(worker);
 
+const logHandlers = new Map([
+  [1, (msg) => console.error(msg)],
+  [2, (msg) => console.warn(msg)],
+  [3, (msg) => console.info(msg)],
+]);
+
 const client = new LSPClient({
   extensions: languageServerExtensions(),
+  notificationHandlers: {
+    // Worker からの window/logMessage を受け取って console に流す
+    'window/logMessage': (client, { type, message }) => {
+      (logHandlers.get(type) ?? ((msg) => console.log(msg)))(message);
+      return true;
+    },
+  },
 }).connect(transport);
 
 const editor = new EditorView({

@@ -1,133 +1,301 @@
 import ts from 'https://esm.sh/typescript';
 import * as tsvfs from 'https://esm.sh/@typescript/vfs';
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-
-
-// 投げっぱなしの通知 (Notification) を送る
-function sendNotification(method, params = {}) {
-  self.postMessage(
-    JSON.stringify({
-      jsonrpc: '2.0',
-      method: method,
-      params: params,
-    }),
-  );
-}
-// 独自定義: ログ送信
-function postLog(message) {
-  sendNotification('worker/log', {
-    timestamp: new Date().toLocaleTimeString('ja-JP', {
-      hour12: false,
-      fractionalSecondDigits: 3,
-    }),
-    message: `[Worker] ${message}`,
+function formatTime() {
+  const now = new Date();
+  return now.toLocaleTimeString('ja-JP', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
   });
 }
 
-postLog('hige')
-function uriToPath(uri) {
-  return new URL(uri).pathname;
-}
-
-const compilerOptions = {
-  target: ts.ScriptTarget.ES2022,
-};
-
-const fsMap = await tsvfs.createDefaultMapFromCDN(compilerOptions, ts.version, false, ts);
-
-const system = tsvfs.createSystem(fsMap);
-
-const env = tsvfs.createVirtualTypeScriptEnvironment(system, [], ts, compilerOptions);
-
-const handlers = {
-  initialize({ id }) {
-    reply(id, {
-      capabilities: {
-        textDocumentSync: 1,
-        completionProvider: {
-          resolveProvider: false,
-          triggerCharacters: ['.'],
-        },
+/**
+ * Worker 内部からのログ送信（eruda等での表示用）
+ * @param {string} message - 送信するメッセージ
+ * @param {number} type - 1:Error, 2:Warning, 3:Info, 4:Log
+ */
+function postLog(message, type = 3) {
+  try {
+    self.postMessage({
+      jsonrpc: '2.0',
+      method: 'window/logMessage',
+      params: {
+        type,
+        message: `[${formatTime()}] [LSP Worker] ${message}`,
       },
     });
-  },
+  } catch (e) {
+    // postMessage が例外になっても沈黙
+  }
+}
 
-  initialized() {},
+class BrowserLanguageServer {
+  #fsMap;
+  #system;
+  #env;
+  #ready = false;
+  #envId = 0;
 
-  'textDocument/didOpen'({ params }) {
-    const { uri, text } = params.textDocument;
-    const path = uriToPath(uri);
+  // 1. compilerOptions をクラス内で一元管理
+  #compilerOptions = {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    strict: true,
+    skipLibCheck: true,
+    noEmit: true,
+    allowImportingTsExtensions: true,
+    allowArbitraryExtensions: true,
+  };
 
-    env.createFile(path, text === '' ? '\n' : text);
-  },
+  #requestHandlers = {
+    initialize: this.#handleInitialize.bind(this),
+    'textDocument/completion': this.#handleCompletion.bind(this),
+  };
 
-  'textDocument/didChange'({ params }) {
-    const { uri } = params.textDocument;
-    const text = params.contentChanges[0].text;
+  #notificationHandlers = {
+    initialized: this.#handleInitialized.bind(this),
+    'textDocument/didOpen': this.#handleDidOpen.bind(this),
+    'textDocument/didChange': this.#handleDidChange.bind(this),
+    'textDocument/didClose': this.#handleDidClose.bind(this),
+  };
+  // --- ユーティリティ: 座標変換 ---
 
-    const path = uriToPath(uri);
-
-    env.updateFile(path, text);
-  },
-
-  'textDocument/completion'({ id, params }) {
-    const { uri } = params.textDocument;
-    const { line, character } = params.position;
-
-    const path = uriToPath(uri);
-
-    const source = env.languageService.getProgram().getSourceFile(path);
-
-    if (!source) {
-      reply(id, {
-        isIncomplete: false,
-        items: [],
-      });
-      return;
-    }
-
-    const offset = ts.getPositionOfLineAndCharacter(source, line, character);
-
-    const result = env.languageService.getCompletionsAtPosition(path, offset, {});
-
-    reply(id, {
-      isIncomplete: false,
-      items: (result?.entries ?? []).map((entry) => ({
-        label: entry.name,
-      })),
-    });
-  },
-};
-
-self.addEventListener('message', ({ data }) => {
-  const handler = handlers[data.method];
-
-  if (!handler) {
-    if (data.id != null) {
-      error(data.id, -32601, 'Method not found');
-    }
-    return;
+  #getOffsetFromLSPPosition(uri, position) {
+    const sourceFile = this.#env.getSourceFile(uri);
+    if (!sourceFile) return 0;
+    // LSPのPosition (line, character) は0ベース。TSのAPIも0ベースを想定しています。
+    return ts.getPositionOfLineAndCharacter(sourceFile, position.line, position.character);
   }
 
-  handler(data);
+  // --- ユーティリティ: TSのKindをLSPのCompletionItemKind(数値)に変換 ---
+
+  #getCompletionItemKind(tsKind) {
+    // 参照: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
+    switch (tsKind) {
+      case ts.ScriptElementKind.primitiveType:
+      case ts.ScriptElementKind.keyword:
+        return 14; // Keyword
+      case ts.ScriptElementKind.constElement:
+        return 21; // Constant
+      case ts.ScriptElementKind.letElement:
+      case ts.ScriptElementKind.variableElement:
+      case ts.ScriptElementKind.localVariableElement:
+        return 6; // Variable
+      case ts.ScriptElementKind.classElement:
+        return 7; // Class
+      case ts.ScriptElementKind.interfaceElement:
+        return 8; // Interface
+      case ts.ScriptElementKind.typeElement:
+        return 25; // TypeParameter
+      case ts.ScriptElementKind.enumElement:
+        return 13; // Enum
+      case ts.ScriptElementKind.functionElement:
+      case ts.ScriptElementKind.localFunctionElement:
+        return 3; // Function
+      case ts.ScriptElementKind.memberFunctionElement:
+        return 2; // Method
+      case ts.ScriptElementKind.memberGetAccessorElement:
+      case ts.ScriptElementKind.memberSetAccessorElement:
+      case ts.ScriptElementKind.memberVariableElement:
+        return 5; // Field
+      case ts.ScriptElementKind.moduleElement:
+        return 9; // Module
+      case ts.ScriptElementKind.string:
+        return 1; // Text
+      default:
+        return 10; // Property
+    }
+  }
+
+  // --- ハンドラ: 補完の実行 ---
+
+  async #handleCompletion(params) {
+    const uri = params.textDocument.uri;
+    const position = params.position;
+
+    // 1. LSPの座標をTSのオフセットに変換
+    const offset = this.#getOffsetFromLSPPosition(uri, position);
+
+    try {
+      // 2. TS Compiler API から補完候補を取得
+      const completions = this.#env.languageService.getCompletionsAtPosition(uri, offset, {
+        includeCompletionsForModuleExports: false, // 今回はシンプルにするため外部エクスポートは含めない
+        includeCompletionsWithInsertText: true,
+      });
+
+      if (!completions || !completions.entries) {
+        return null; // 候補がない場合は null を返す
+      }
+
+      // 3. TSの補完リストをLSPのフォーマットにマッピング
+      const items = completions.entries.map((entry) => {
+        return {
+          label: entry.name,
+          kind: this.#getCompletionItemKind(entry.kind),
+          sortText: entry.sortText,
+          // 補完実行時に挿入されるテキスト（定義されていなければlabelが使われる）
+          insertText: entry.insertText,
+        };
+      });
+
+      return {
+        isIncomplete: false,
+        items,
+      };
+    } catch (e) {
+      postLog(`Completion error: ${e.message}`, 1);
+      return null;
+    }
+  }
+
+  async handleMessage(message) {
+    const { id, method, params } = message;
+
+    try {
+      if (id !== undefined) {
+        const handler = this.#requestHandlers[method];
+        if (handler) {
+          if (method !== 'initialize' && !this.#ready) {
+            throw new Error('Server is not ready yet');
+          }
+          const result = await handler(params);
+          return { jsonrpc: '2.0', id, result };
+        } else {
+          // 未実装メソッドへのフォールバック
+          return {
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32601,
+              message: `Method ${method} not implemented`,
+            },
+          };
+        }
+      } else {
+        const handler = this.#notificationHandlers[method];
+        if (handler) {
+          if (method !== 'initialized' && !this.#ready) return null;
+          await handler(params);
+        }
+        return null;
+      }
+    } catch (err) {
+      postLog(`Error handling ${method}: ${err.message}`, 1);
+      if (id !== undefined) {
+        return {
+          jsonrpc: '2.0',
+          id,
+          error: { code: -32603, message: err.message || String(err) },
+        };
+      }
+      return null;
+    }
+  }
+
+  async #handleInitialize(params) {
+    await this.#init();
+    return {
+      capabilities: {
+        textDocumentSync: 1, // Full Sync
+        hoverProvider: true,
+        completionProvider: {
+          resolveProvider: false,
+          triggerCharacters: ['.', '"', "'", '/', '@', '<'],
+        },
+      },
+    };
+  }
+
+  async #handleInitialized() {
+    postLog('Client and Server successfully connected.');
+  }
+
+  async #handleDidOpen(params) {
+    const { uri, text } = params.textDocument;
+    const initialText = text.trim() === '' ? '\n' : text;
+    this.#env.createFile(uri, initialText);
+    postLog(`Opened file: ${uri}`);
+  }
+
+  async #handleDidChange(params) {
+    const { uri } = params.textDocument;
+    const text = params.contentChanges[0].text;
+    const validText = text.trim() === '' ? '\n' : text;
+    this.#env.updateFile(uri, validText);
+  }
+
+  async #handleDidClose(params) {
+    const { uri } = params.textDocument;
+    this.#env.deleteFile(uri);
+    postLog(`Closed file: ${uri}`);
+  }
+
+  async #init() {
+    this.#envId++;
+    postLog(`VfsCore init start (env #${this.#envId})`);
+
+    // 共通の compilerOptions を使用
+    this.#fsMap = await this.#createDefaultMapWithRetry();
+    this.#system = tsvfs.createSystem(this.#fsMap);
+
+    // 共通の compilerOptions を使用
+    this.#env = tsvfs.createVirtualTypeScriptEnvironment(this.#system, [], ts, this.#compilerOptions);
+
+    this.#ready = true;
+    postLog(`VfsCore init complete (env #${this.#envId})`);
+  }
+
+  async #createDefaultMapWithRetry(retryCount = 3, perAttemptTimeoutMs = 8000) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      postLog(`VFS lib fetch attempt ${attempt}/${retryCount}`);
+
+      try {
+        const result = await Promise.race([
+          tsvfs.createDefaultMapFromCDN(
+            this.#compilerOptions, // 共通のオプションを渡す
+            ts.version,
+            false,
+            ts,
+          ),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), perAttemptTimeoutMs)),
+        ]);
+
+        postLog(`VFS lib fetch success size=${result.size}`);
+        return result;
+      } catch (err) {
+        lastError = err;
+        const msg = String(err?.message ?? err);
+
+        if (msg.includes('NetworkError')) {
+          postLog('VFS lib fetch network error → abort', 1);
+          throw err;
+        }
+
+        if (msg.includes('timeout')) {
+          postLog('VFS lib fetch timeout → retry with backoff', 2);
+          await sleep(1000 * attempt);
+          continue;
+        }
+
+        postLog(`VFS lib fetch unexpected error: ${msg}`, 1);
+        throw err;
+      }
+    }
+    throw lastError || new Error('VFS default map initialization failed');
+  }
+}
+
+const server = new BrowserLanguageServer();
+self.addEventListener('message', async (e) => {
+  const response = await server.handleMessage(e.data);
+  if (response) {
+    self.postMessage(response);
+  }
 });
-
-function reply(id, result) {
-  self.postMessage({
-    jsonrpc: '2.0',
-    id,
-    result,
-  });
-}
-
-function error(id, code, message) {
-  self.postMessage({
-    jsonrpc: '2.0',
-    id,
-    error: {
-      code,
-      message,
-    },
-  });
-}
