@@ -41,12 +41,19 @@ const logHandlers = new Map([
   [3, (msg) => console.info(msg)],
 ]);
 
-// ファイルの上部やクラスのプロパティとして定義しておく
+// ファイルの上部やクラスのプロパティとして定義しておく
 const LOG_LEVEL_MAP = {
   1: 'error',
   2: 'warn',
   3: 'info',
   4: 'log',
+};
+
+const LOG_ICON_MAP = {
+  1: '🔴',
+  2: '🟧',
+  3: '🔵',
+  4: '⬛',
 };
 
 const client = new LSPClient({
@@ -60,7 +67,7 @@ const client = new LSPClient({
     // Worker からの window/logMessage を受け取って console に流す
     'worker/log': (client, { type, message }) => {
       const logType = LOG_LEVEL_MAP[type] ?? 'log';
-      console[logType](`${logType} : ${message}`);
+      console[logType](`${LOG_ICON_MAP[type]} : ${message}`);
       return true;
     },
 
@@ -70,14 +77,16 @@ const client = new LSPClient({
     //   else if (params.type === 2) console.warn(`${params.type}:${params.message}`);
     //   else console.log(`${params.type}:${params.message}`);
 
-    //   return true; // デフォルトのハンドラを上書きする
+    //   return true; // デフォルトのハンドラを上書きする
     // },
   },
 }).connect(transport);
-// @ts-check
-const initialCode = `import 'p5';
 
+const initialCode = `import p5 from 'p5';
 
+/**
+ * @param {p5} p
+ */
 const sketch = (p) => {
   p.setup = () => {
     // put setup code here

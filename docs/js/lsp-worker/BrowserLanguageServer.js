@@ -17,17 +17,16 @@ export default class BrowserLanguageServer {
   #env;
   #ready = false;
   #envId = 0;
-  #documentTimers = new Map(); // Diagnosticsのデバウンス用
+  #documentTimers = new Map(); // Diagnosticsのデバウンス用
 
   #ata;
   #ataTimer = null;
   #activeUris = new Set(); // 開いているファイルのURIを管理する
 
-  // compilerOptions をクラス内で一元管理
+  // compilerOptions をクラス内で一元管理
   #compilerOptions = {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
-    // moduleResolution: ts.ModuleResolutionKind.NodeJs,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     strict: true,
     skipLibCheck: true,
@@ -37,6 +36,8 @@ export default class BrowserLanguageServer {
     allowJs: true,
     checkJs: true,
     noUnusedLocals: true,
+    esModuleInterop: true,
+    jsx: ts.JsxEmit.ReactJSX,
   };
 
   #requestHandlers = {
@@ -53,7 +54,7 @@ export default class BrowserLanguageServer {
   };
 
   // =========================================================================
-  // 2. Public API (エントリーポイント)
+  // 2. Public API (エントリーポイント)
   // =========================================================================
   async handleMessage(message) {
     const { id, method, params } = message;
@@ -68,7 +69,7 @@ export default class BrowserLanguageServer {
           const result = await handler(params);
           return { jsonrpc: '2.0', id, result };
         } else {
-          // 未実装メソッドへのフォールバック
+          // 未実装メソッドへのフォールバック
           return {
             jsonrpc: '2.0',
             id,
@@ -108,6 +109,24 @@ export default class BrowserLanguageServer {
 
     // 共通の compilerOptions を使用
     this.#fsMap = await this.#createDefaultMapWithRetry();
+    /*
+    const [fsMap, p5SoundDts] = await Promise.all([
+      this.#createDefaultMapWithRetry(),
+      // p5.sound の型定義を unpkg から直接ピンポイントで狙い撃ち
+      fetch('https://unpkg.com/@types/p5@1.7.7/lib/addons/p5.sound.d.ts')
+        .then((r) => r.text())
+        .catch(() => ''),
+    ]);
+
+    this.#fsMap = fsMap;
+    if (p5SoundDts) {
+      const soundPath =
+        'file:///node_modules/@types/p5/lib/addons/p5.sound.d.ts';
+      this.#fsMap.set(soundPath, p5SoundDts);
+      postLog(`[Pre-fetch] Injected: ${soundPath}`, 4);
+    }
+    */
+
     this.#system = tsvfs.createSystem(this.#fsMap);
 
     this.#env = tsvfs.createVirtualTypeScriptEnvironment(this.#system, [], ts, this.#compilerOptions);
@@ -125,18 +144,22 @@ export default class BrowserLanguageServer {
       delegate: {
         // CDNから型定義ファイルを受信した時
         receivedFile: (code, path) => {
+          const vfsPath = `file://${path}`;
           postLog(`[ATA] Injected: ${path}`, 4);
           // VFSに既に存在すれば更新、なければ作成
-          if (this.#env.getSourceFile(path)) {
-            this.#env.updateFile(path, code);
+          // this.#env.getSourceFile(vfsPath)
+          //   ? this.#env.updateFile(vfsPath, code)
+          //   : this.#env.createFile(vfsPath, code);
+          if (this.#env.getSourceFile(vfsPath)) {
+            this.#env.updateFile(vfsPath, code);
           } else {
-            this.#env.createFile(path, code);
+            this.#env.createFile(vfsPath, code);
           }
         },
-        // 全ての型のダウンロードが完了した時
+        // 全ての型のダウンロード完了時
         finished: () => {
           postLog(`[ATA] Finished downloading types.`, 3);
-          // ★超重要: 型が揃ったので、開いているファイルの「モジュールが見つかりません」エラーを消すために診断を再実行!
+          // 診断を再実行
           for (const uri of this.#activeUris) {
             this.#publishDiagnostics(uri);
           }
@@ -146,6 +169,10 @@ export default class BrowserLanguageServer {
 
     this.#ready = true;
     postLog(`VfsCore init complete (env #${this.#envId})`);
+
+    postLog('Pre-fetching default libraries via ATA...', 4);
+    // this.#ata(`import p5 from 'p5';`);
+    this.#ata(`import 'p5';`);
   }
 
   async #createDefaultMapWithRetry(retryCount = 3, perAttemptTimeoutMs = 8000) {
@@ -157,7 +184,7 @@ export default class BrowserLanguageServer {
       try {
         const result = await Promise.race([
           tsvfs.createDefaultMapFromCDN(
-            this.#compilerOptions, // 共通のオプションを渡す
+            this.#compilerOptions, // 共通のオプションを渡す
             ts.version,
             false,
             ts,
@@ -211,7 +238,7 @@ export default class BrowserLanguageServer {
   }
 
   // =========================================================================
-  // 5. Document Sync Handlers (ドキュメント同期)
+  // 5. Document Sync Handlers (ドキュメント同期)
   // =========================================================================
   async #handleDidOpen(params) {
     const { uri, text } = params.textDocument;
@@ -253,42 +280,42 @@ export default class BrowserLanguageServer {
       postLog('Triggering ATA parsing...', 4);
       this.#ata(text);
     }, 1000);
-  }
 
-  // =========================================================================
-  // 6. Language Features (ホバー、補完、診断)
-  // =========================================================================
-  async #handleHover(params) {
-    // LSPから送られてくる params は { textDocument: { uri: "..." }, position: { ... } }
-    const uri = params.textDocument.uri;
-    const position = params.position;
-    const offset = this.#getOffsetFromLSPPosition(uri, position);
-
+    /*
     const files = this.#env.languageService
       .getProgram()
       .getSourceFiles()
       .map((f) => f.fileName);
 
-    //console.log(files);
+    console.log(files);
+    */
+  }
 
-    // または
-    postLog(files.join('\n'));
+  // =========================================================================
+  // 6. Language Features (ホバー、補完、診断)
+  // =========================================================================
+  async #handleHover(params) {
+    // LSPから送られてくる params は
+    // `{ textDocument: { uri: "..." }, position: { ... } }`
+    const uri = params.textDocument.uri;
+    const position = params.position;
+    const offset = this.#getOffsetFromLSPPosition(uri, position);
 
     try {
-      // 1. TS Compiler API からホバー先の情報を取得 (QuickInfo)
+      // TS Compiler API からホバー先の情報を取得 (QuickInfo)
       const info = this.#env.languageService.getQuickInfoAtPosition(uri, offset);
       if (!info) {
         return null;
-      } // ホバー情報がない場所（空白など）は null を返す
+      } // ホバー情報がない場所(空白など)は null を返す
 
-      // 2. TSが持っている情報を文字列に変換
+      // TSが持っている情報を文字列に変換
       const displayString = ts.displayPartsToString(info.displayParts || []);
       const docString = ts.displayPartsToString(info.documentation || []);
 
-      // 3. LSPの Hover フォーマット (Markdown) に変換して返す
+      // LSPの Hover フォーマット (Markdown) に変換して返す
       const contents = {
         kind: 'markdown',
-        value: [`\`\`\`typescript\n${displayString}\n\`\`\``, docString].filter(Boolean).join('\n\n---\n\n'), // コメント(docString)があれば横線で区切る
+        value: [`\`\`\`typescript\n${displayString}\n\`\`\``, docString].filter(Boolean).join('\n\n---\n\n'), // コメント(docString)があれば横線で区切る
       };
 
       return {
@@ -308,27 +335,27 @@ export default class BrowserLanguageServer {
     const uri = params.textDocument.uri;
     const position = params.position;
 
-    // 1. LSPの座標をTSのオフセットに変換
+    // LSPの座標をTSのオフセットに変換
     const offset = this.#getOffsetFromLSPPosition(uri, position);
 
     try {
-      // 2. TS Compiler API から補完候補を取得
+      // TS Compiler API から補完候補を取得
       const completions = this.#env.languageService.getCompletionsAtPosition(uri, offset, {
-        includeCompletionsForModuleExports: false, // 今回はシンプルにするため外部エクスポートは含めない
+        includeCompletionsForModuleExports: false, // 今回はシンプルにするため外部エクスポートは含めない
         includeCompletionsWithInsertText: true,
       });
 
       if (!completions || !completions.entries) {
-        return null; // 候補がない場合は null を返す
+        return null; // 候補がない場合は null を返す
       }
 
-      // 3. TSの補完リストをLSPのフォーマットにマッピング
+      // TSの補完リストをLSPのフォーマットにマッピング
       const items = completions.entries.map((entry) => {
         return {
           label: entry.name,
           kind: getCompletionItemKind(entry.kind),
           sortText: entry.sortText,
-          // 補完実行時に挿入されるテキスト（定義されていなければlabelが使われる）
+          // 補完実行時に挿入されるテキスト(定義されていなければlabelが使われる)
           insertText: entry.insertText,
         };
       });
@@ -343,12 +370,12 @@ export default class BrowserLanguageServer {
     }
   }
 
-  // デバウンス処理付きのトリガー
+  // デバウンス処理付きのトリガー
   #triggerDiagnostics(uri) {
     if (this.#documentTimers.has(uri)) {
       clearTimeout(this.#documentTimers.get(uri));
     }
-    // 300ms 入力がなければ診断を実行
+    // 300ms 入力がなければ診断を実行
     const timer = setTimeout(() => {
       this.#publishDiagnostics(uri);
       this.#documentTimers.delete(uri);
@@ -364,7 +391,7 @@ export default class BrowserLanguageServer {
       const tsDiagnostics = [...syntactic, ...semantic];
 
       const diagnostics = tsDiagnostics.map((diag) => {
-        // エラー位置の計算（開始位置と終了位置）
+        // エラー位置の計算(開始位置と終了位置)
         const startOffset = diag.start ?? 0;
         const endOffset = startOffset + (diag.length ?? 0);
         const start = this.#getLSPPositionFromOffset(uri, startOffset);
@@ -374,7 +401,7 @@ export default class BrowserLanguageServer {
           range: { start, end },
           severity: getDiagnosticSeverity(diag.category),
           source: 'typescript',
-          // メッセージが入れ子になっている場合を考慮して平坦化
+          // メッセージが入れ子になっている場合を考慮して平坦化
           message: ts.flattenDiagnosticMessageText(diag.messageText, '\n'),
         };
       });
@@ -402,7 +429,7 @@ export default class BrowserLanguageServer {
     if (!sourceFile) {
       throw new Error(`Source file not found: ${uri}`);
     }
-    // LSPのPosition (line, character) は0ベース。TSのAPIも0ベースを想定しています。
+    // LSPのPosition (line, character) は0ベース。TSのAPIも0ベースを想定
     return ts.getPositionOfLineAndCharacter(sourceFile, position.line, position.character);
   }
 
