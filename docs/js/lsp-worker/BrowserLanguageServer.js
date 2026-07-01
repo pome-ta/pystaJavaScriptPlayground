@@ -1,5 +1,7 @@
 import ts from 'https://esm.sh/typescript';
 import * as tsvfs from 'https://esm.sh/@typescript/vfs';
+import { setupTypeAcquisition } from 'https://esm.sh/@typescript/ata';
+
 import { getCompletionItemKind, getDiagnosticSeverity } from './converters.js';
 
 import { postLog } from './logger.js';
@@ -16,6 +18,10 @@ export default class BrowserLanguageServer {
   #ready = false;
   #envId = 0;
   #documentTimers = new Map(); // Diagnosticsのデバウンス用
+
+  #ata;
+  #ataTimer = null;
+  #activeUris = new Set(); // 開いているファイルのURIを管理する
 
   // compilerOptions をクラス内で一元管理
   #compilerOptions = {
@@ -101,41 +107,42 @@ export default class BrowserLanguageServer {
     postLog(`VfsCore init start (env #${this.#envId})`);
 
     // 共通の compilerOptions を使用
-    // this.#fsMap = await this.#createDefaultMapWithRetry();
-
-    // // 2. p5.jsの型定義を手動フェッチしてVFSに追加
-    // const [p5Index, p5Global] = await Promise.all([
-    //   fetch('https://unpkg.com/@types/p5/index.d.ts').then((r) => r.text()),
-    //   fetch('https://unpkg.com/@types/p5/global.d.ts').then((r) => r.text()),
-    // ]);
-    // this.#fsMap.set('/p5.d.ts', p5Index);
-    // this.#fsMap.set('/p5.global.d.ts', p5Global);
-
-    const [fsMap, p5Index, p5Global] = await Promise.all([
-      this.#createDefaultMapWithRetry(),
-      fetch('https://unpkg.com/@types/p5/index.d.ts').then((r) => r.text()),
-      fetch('https://unpkg.com/@types/p5/global.d.ts').then((r) => r.text()),
-    ]);
-    this.#fsMap = fsMap;
-    this.#fsMap.set('/p5.d.ts', p5Index);
-    this.#fsMap.set('/p5.global.d.ts', p5Global);
-
+    this.#fsMap = await this.#createDefaultMapWithRetry();
     this.#system = tsvfs.createSystem(this.#fsMap);
 
-    // 共通の compilerOptions を使用
-    // this.#env = tsvfs.createVirtualTypeScriptEnvironment(
-    //   this.#system,
-    //   ['/p5.d.ts', '/p5.global.d.ts'],
-    //   ts,
-    //   this.#compilerOptions,
-    // );
+    this.#env = tsvfs.createVirtualTypeScriptEnvironment(this.#system, [], ts, this.#compilerOptions);
 
-    this.#env = tsvfs.createVirtualTypeScriptEnvironment(
-      this.#system,
-      ['/p5.d.ts', '/p5.global.d.ts'],
-      ts,
-      this.#compilerOptions,
-    );
+    this.#ata = setupTypeAcquisition({
+      projectName: 'browser-lsp',
+      typescript: ts,
+      // ATA内部のログを eruda に流す
+      logger: {
+        log: (msg) => postLog(`[ATA] ${msg}`, 4),
+        error: (msg) => postLog(`[ATA Error] ${msg}`, 1),
+        warn: (msg) => postLog(`[ATA Warn] ${msg}`, 2),
+        info: (msg) => postLog(`[ATA Info] ${msg}`, 3),
+      },
+      delegate: {
+        // CDNから型定義ファイルを受信した時
+        receivedFile: (code, path) => {
+          postLog(`[ATA] Injected: ${path}`, 4);
+          // VFSに既に存在すれば更新、なければ作成
+          if (this.#env.getSourceFile(path)) {
+            this.#env.updateFile(path, code);
+          } else {
+            this.#env.createFile(path, code);
+          }
+        },
+        // 全ての型のダウンロードが完了した時
+        finished: () => {
+          postLog(`[ATA] Finished downloading types.`, 3);
+          // ★超重要: 型が揃ったので、開いているファイルの「モジュールが見つかりません」エラーを消すために診断を再実行!
+          for (const uri of this.#activeUris) {
+            this.#publishDiagnostics(uri);
+          }
+        },
+      },
+    });
 
     this.#ready = true;
     postLog(`VfsCore init complete (env #${this.#envId})`);
@@ -208,11 +215,15 @@ export default class BrowserLanguageServer {
   // =========================================================================
   async #handleDidOpen(params) {
     const { uri, text } = params.textDocument;
+
+    this.#activeUris.add(uri);
+
     const initialText = text.trim() === '' ? '\n' : text;
     this.#env.createFile(uri, initialText);
     postLog(`Opened file: ${uri}`);
 
     this.#triggerDiagnostics(uri);
+    this.#triggerATA(initialText);
   }
 
   async #handleDidChange(params) {
@@ -222,12 +233,26 @@ export default class BrowserLanguageServer {
     this.#env.updateFile(uri, validText);
 
     this.#triggerDiagnostics(uri);
+    this.#triggerATA(validText);
   }
 
   async #handleDidClose(params) {
     const { uri } = params.textDocument;
+
+    this.#activeUris.delete(uri);
+
     this.#env.deleteFile(uri);
     postLog(`Closed file: ${uri}`);
+  }
+
+  #triggerATA(text) {
+    if (this.#ataTimer) {
+      clearTimeout(this.#ataTimer);
+    }
+    this.#ataTimer = setTimeout(() => {
+      postLog('Triggering ATA parsing...', 4);
+      this.#ata(text);
+    }, 1000);
   }
 
   // =========================================================================
@@ -238,6 +263,16 @@ export default class BrowserLanguageServer {
     const uri = params.textDocument.uri;
     const position = params.position;
     const offset = this.#getOffsetFromLSPPosition(uri, position);
+
+    const files = this.#env.languageService
+      .getProgram()
+      .getSourceFiles()
+      .map((f) => f.fileName);
+
+    //console.log(files);
+
+    // または
+    postLog(files.join('\n'));
 
     try {
       // 1. TS Compiler API からホバー先の情報を取得 (QuickInfo)

@@ -75,32 +75,32 @@ const client = new LSPClient({
   },
 }).connect(transport);
 // @ts-check
-const initialCode = `
-// Error: 存在しない変数を使用
-console.log(notDefinedVar);
+const initialCode = `import p5 from 'p5';
+const sketch = (p) => {
+  p.setup = () => {
+    // put setup code here
+    p.createCanvas(300, 300);
 
-// Warning: 宣言したが未使用
-const unusedValue = 42;
+    p.background(255);
+    const xstart = p.random(10);
+    let xnoise = xstart;
+    let ynoise = p.random(10);
 
-function test() {
-  // Warning: 宣言したが未使用 (ここに波線が出ます)
-  const unusedValueuu = 42;
-}
+    for (let y = 0; y <= p.height; y++) {
+      ynoise += 0.01;
+      xnoise = xstart;
+      for (let x = 0; x <= p.width; x++) {
+        xnoise += 0.01;
+        const alph = Math.trunc(p.noise(xnoise, ynoise) * 255);
+        p.stroke(0, alph);
+        p.line(x, y, x + 1, y + 1);
+      }
+    }
+  };
+};
 
-// Information: JSDoc コメントからの型推論表示を確認
-/**
- * Adds two numbers together.
- * @param {number} a
- * @param {number} b
- */
-function add(a, b) {
-  return a + b;
-}
-
-// Hint: 意図的に '==' を使用 → LSP が "use '===' instead" の提案を出す場合がある
-if (1 == '1') {
-  console.log('hint test');
-}`;
+new p5(sketch);
+`;
 
 const editor = new EditorView({
   state: EditorState.create({
