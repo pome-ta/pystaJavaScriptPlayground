@@ -75,7 +75,9 @@ const client = new LSPClient({
   },
 }).connect(transport);
 // @ts-check
-const initialCode = `import p5 from 'p5';
+const initialCode = `import 'p5';
+
+
 const sketch = (p) => {
   p.setup = () => {
     // put setup code here
