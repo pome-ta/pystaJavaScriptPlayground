@@ -1,3 +1,14 @@
+let isDebugEnabled = false;
+
+/**
+ * デバッグモードの有効/無効を切り替えます。
+ * @param {boolean} enabled
+ */
+export const setDebug = (enabled) => {
+  isDebugEnabled = !!enabled;
+  
+};
+
 function formatTime() {
   const now = new Date();
   return now.toLocaleTimeString('ja-JP', {
