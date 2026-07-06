@@ -6,7 +6,6 @@ let isDebugEnabled = false;
  */
 export const setDebug = (enabled) => {
   isDebugEnabled = !!enabled;
-  
 };
 
 function formatTime() {
@@ -26,6 +25,9 @@ function formatTime() {
  * @param {number} type - 1:Error, 2:Warning, 3:Info, 4:Log
  */
 export function postLog(message, type = 3) {
+  if (!isDebugEnabled && type > 3) {
+    return;
+  }
   try {
     self.postMessage({
       jsonrpc: '2.0',
