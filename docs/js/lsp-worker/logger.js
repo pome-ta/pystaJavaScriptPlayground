@@ -6,6 +6,7 @@ let isDebugEnabled = false;
  */
 export const setDebug = (enabled) => {
   isDebugEnabled = !!enabled;
+  postLog(`debug ${isDebugEnabled}`, 3);
 };
 
 function formatTime() {
