@@ -2,7 +2,7 @@ import ts from 'https://cdn.jsdelivr.net/npm/typescript@6.0.3/+esm';
 import * as tsvfs from 'https://cdn.jsdelivr.net/npm/@typescript/vfs@1.6.4/+esm';
 import { setupTypeAcquisition } from 'https://cdn.jsdelivr.net/npm/@typescript/ata@0.9.8/+esm';
 
-import { postLog } from '../logger.js';
+import { postLog } from '../../logger.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

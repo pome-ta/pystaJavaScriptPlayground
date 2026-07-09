@@ -5,7 +5,7 @@ import { CompletionProvider } from './providers/CompletionProvider.js';
 import { DiagnosticProvider } from './providers/DiagnosticProvider.js';
 import { JsonRpcErrorCode } from './protocol/JsonRpcErrorCode.js';
 
-import { postLog, setDebug } from './logger.js';
+import { postLog, setDebug } from '../logger.js';
 
 export default class BrowserLanguageServer {
   #tsEnv;
