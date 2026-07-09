@@ -1,4 +1,4 @@
-import ts from 'https://esm.sh/typescript';
+import ts from 'https://esm.sh/typescript@6.0.2';
 
 const DiagnosticSeverityMap = {
   [ts.DiagnosticCategory.Error]: 1,
