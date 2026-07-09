@@ -1,4 +1,4 @@
-import ts from 'https://esm.sh/typescript@6.0.2';
+import ts from 'https://cdn.jsdelivr.net/npm/typescript@6.0.3/+esm';
 
 const CompletionItemKindMap = {
   [ts.ScriptElementKind.primitiveType]: 14,

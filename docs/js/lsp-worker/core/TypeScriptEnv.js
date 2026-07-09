@@ -1,10 +1,8 @@
-import ts from 'https://esm.sh/typescript@6.0.2';
-import ts from 'https://esm.sh/@typescript/typescript6';
-import * as tsvfs from 'https://esm.sh/@typescript/vfs';
-import { setupTypeAcquisition } from 'https://esm.sh/@typescript/ata';
+import ts from 'https://cdn.jsdelivr.net/npm/typescript@6.0.3/+esm';
+import * as tsvfs from 'https://cdn.jsdelivr.net/npm/@typescript/vfs@1.6.4/+esm';
+import { setupTypeAcquisition } from 'https://cdn.jsdelivr.net/npm/@typescript/ata@0.9.8/+esm';
+
 import { postLog } from '../logger.js';
-
-
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -38,7 +36,12 @@ export class TypeScriptEnv {
 
     this.#fsMap = await this.#createDefaultMapWithRetry();
     this.#system = tsvfs.createSystem(this.#fsMap);
-    this.#env = tsvfs.createVirtualTypeScriptEnvironment(this.#system, [], ts, this.#compilerOptions);
+    this.#env = tsvfs.createVirtualTypeScriptEnvironment(
+      this.#system,
+      [],
+      ts,
+      this.#compilerOptions,
+    );
 
     this.#setupATA();
     this.#ata(`import 'p5';`);
@@ -89,7 +92,11 @@ export class TypeScriptEnv {
     if (!sourceFile) {
       return null;
     }
-    return ts.getPositionOfLineAndCharacter(sourceFile, position.line, position.character);
+    return ts.getPositionOfLineAndCharacter(
+      sourceFile,
+      position.line,
+      position.character,
+    );
   }
 
   #getPosition(uri, offset) {
@@ -205,8 +212,15 @@ export class TypeScriptEnv {
       postLog(`VFS lib fetch attempt ${attempt}/${retryCount}`);
       try {
         const result = await Promise.race([
-          tsvfs.createDefaultMapFromCDN(this.#compilerOptions, ts.version, false, ts),
-          new Promise((_, r) => setTimeout(() => r(new Error('timeout')), perAttemptTimeoutMs)),
+          tsvfs.createDefaultMapFromCDN(
+            this.#compilerOptions,
+            ts.version,
+            false,
+            ts,
+          ),
+          new Promise((_, r) =>
+            setTimeout(() => r(new Error('timeout')), perAttemptTimeoutMs),
+          ),
         ]);
         postLog(`VFS lib fetch success size=${result.size}`);
         return result;
