@@ -1,6 +1,6 @@
-import ts from 'https://cdn.jsdelivr.net/npm/typescript@6.0.3/+esm';
-import * as tsvfs from 'https://cdn.jsdelivr.net/npm/@typescript/vfs@1.6.4/+esm';
-import { setupTypeAcquisition } from 'https://cdn.jsdelivr.net/npm/@typescript/ata@0.9.8/+esm';
+import ts from '../../esmCDN/typescript.js';
+import * as tsvfs from '../../esmCDN/@typescript/vfs.js';
+import { setupTypeAcquisition } from '../../esmCDN/@typescript/ata.js';
 
 import { postLog } from '../../logger.js';
 
