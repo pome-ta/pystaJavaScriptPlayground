@@ -5,6 +5,10 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 
 import { LSPClient, languageServerExtensions } from '@codemirror/lsp-client';
 
+import ts from 'https://esm.sh/@typescript/typescript6';
+
+console.log(ts.ScriptTarget.ES2022)
+
 /**
  * @param {Worker} worker
  * @returns {import("@codemirror/lsp-client").Transport}

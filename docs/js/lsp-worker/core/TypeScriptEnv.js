@@ -1,7 +1,12 @@
-import ts from 'https://esm.sh/typescript';
+//import ts from 'https://esm.sh/typescript';
+//import ts from 'https://esm.sh/typescript@6.0.2';
+//import ts from 'https://cdn.jsdelivr.net/npm/typescript@6.0.3/+esm'
+import ts from 'https://esm.sh/@typescript/typescript6';
 import * as tsvfs from 'https://esm.sh/@typescript/vfs';
 import { setupTypeAcquisition } from 'https://esm.sh/@typescript/ata';
 import { postLog } from '../logger.js';
+
+
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
