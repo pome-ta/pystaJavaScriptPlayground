@@ -1,4 +1,4 @@
-let isDebugEnabled = false;
+let isDebugEnabled = true;
 
 /**
  * デバッグモードの有効/無効を切り替えます。
