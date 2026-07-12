@@ -1,9 +1,47 @@
 import DomFactory from './utils/domFactory.js';
 
+
+const instanceMode = `const sketch = (p) => {
+  const v = 360;
+
+  p.setup = () => {
+    // put setup code here
+    p.createCanvas(v, v);
+    p.colorMode(p.HSL, v, 1, 1);
+  };
+
+  p.draw = () => {
+    // put drawing code here
+    p.background(p.frameCount % v, 1, 0.5);
+  };
+};
+
+new p5(sketch);`;
+
+const globalMode = `const v = 360;
+
+function setup() {
+  createCanvas(v, v);
+  colorMode(HSL, v, 1, 1);
+}
+
+function draw() {
+  background(frameCount % v, 1, 0.5);
+}`;
+
+const editor = DomFactory.create('textarea', {
+  textContent: globalMode,
+  setStyles: {
+    width: '90%',
+    height: '10rem',
+  },
+});
+
 // xxx: iframe 生成時と書き換え時と併用
 const reloadSketchHandleEvent = function (e) {
+  const toStringDoc = this.targetEditor.value;
   this.targetSandbox = this.targetSandbox ? this.targetSandbox : e.target;
-  this.targetSandbox.contentWindow.postMessage('hoge', '*');
+  this.targetSandbox.contentWindow.postMessage(toStringDoc, '*');
 };
 
 /* --- iframe */
@@ -26,6 +64,7 @@ const sandbox = DomFactory.create('iframe', {
     {
       type: 'load',
       listener: {
+        targetEditor: editor,
         targetSandbox: null,
         handleEvent: reloadSketchHandleEvent,
       },
@@ -43,13 +82,11 @@ const sandbox = DomFactory.create('iframe', {
   ],
 });
 
-
 const wrapButton = DomFactory.create('div', {
   setStyles: {
-    height: '4rem',
+    height: '2rem',
   },
 });
-
 
 const callButton = DomFactory.create('button', {
   textContent: '🔄',
@@ -59,20 +96,18 @@ const callButton = DomFactory.create('button', {
       type: 'click',
       listener: {
         targetSandbox: sandbox,
+        targetEditor: editor,
         handleEvent: reloadSketchHandleEvent,
       },
     },
   ],
 });
 
-
-
-
 const setLayout = () => {
   document.body.appendChild(wrapButton);
+  document.body.appendChild(editor);
   document.body.appendChild(sandbox);
 };
-
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
@@ -7,18 +7,19 @@
       content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"
     />
 
+    <script src="https://cdn.jsdelivr.net/npm/p5@2.2.3/lib/p5.js"></script>
+
     <script type="importmap">
       {
         "imports": {
-          "eruda": "https://cdn.jsdelivr.net/npm/eruda/+esm",
-          "tone":"https://cdn.jsdelivr.net/npm/tone@15.1.22/+esm"
+          "eruda": "https://cdn.jsdelivr.net/npm/eruda/+esm"
         }
       }
     </script>
 
     <!-- eruda -->
     <script type="module">
-      import eruda from 'eruda';
+      import eruda from "eruda";
 
       eruda.init();
     </script>
