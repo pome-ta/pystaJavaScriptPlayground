@@ -17,8 +17,9 @@ const sandbox = DomFactory.create('iframe', {
     src: './js/sandboxes/sandbox.html',
   },
   setStyles: {
-    width: '50%',
-    height: '50dvh',
+    width: '100%',
+    height: '80dvh',
+    'border-width': '0',
     'background-color': 'darkgray',
   },
   addEventListeners: [
@@ -42,9 +43,17 @@ const sandbox = DomFactory.create('iframe', {
   ],
 });
 
-/* --- accessory */
+
+const wrapButton = DomFactory.create('div', {
+  setStyles: {
+    height: '4rem',
+  },
+});
+
+
 const callButton = DomFactory.create('button', {
   textContent: '🔄',
+  appendParent: wrapButton,
   addEventListeners: [
     {
       type: 'click',
@@ -57,8 +66,10 @@ const callButton = DomFactory.create('button', {
 });
 
 
+
+
 const setLayout = () => {
-  document.body.appendChild(callButton);
+  document.body.appendChild(wrapButton);
   document.body.appendChild(sandbox);
 };
 
