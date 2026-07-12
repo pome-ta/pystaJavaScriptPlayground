@@ -1,6 +1,5 @@
 import DomFactory from './utils/domFactory.js';
 
-
 const instanceMode = `const sketch = (p) => {
   const v = 360;
 
@@ -30,7 +29,7 @@ function draw() {
 }`;
 
 const editor = DomFactory.create('textarea', {
-  textContent: globalMode,
+  textContent: instanceMode,
   setStyles: {
     width: '90%',
     height: '10rem',
