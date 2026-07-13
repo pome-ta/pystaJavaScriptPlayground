@@ -37,7 +37,8 @@ function runSketch(code) {
 // });
 
 window.addEventListener('message', (e) => {
-  const sourceCode = e.data;
+  console.log('hogw');
+  const sourceCode = e.data.code;
   runSketch(sourceCode);
 });
 

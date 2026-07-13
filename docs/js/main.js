@@ -1,5 +1,7 @@
 import DomFactory from './utils/domFactory.js';
 
+const isInstance = true;
+
 const instanceMode = `const sketch = (p) => {
   const v = 360;
 
@@ -7,6 +9,7 @@ const instanceMode = `const sketch = (p) => {
     // put setup code here
     p.createCanvas(v, v);
     p.colorMode(p.HSL, v, 1, 1);
+    console.log(p);
   };
 
   p.draw = () => {
@@ -29,18 +32,25 @@ function draw() {
 }`;
 
 const editor = DomFactory.create('textarea', {
-  textContent: instanceMode,
+  textContent: isInstance ? instanceMode : globalMode,
   setStyles: {
     width: '90%',
     height: '10rem',
   },
 });
 
+const srcPath = './js/sandboxes/sandbox.html';
+
 // xxx: iframe 生成時と書き換え時と併用
 const reloadSketchHandleEvent = function (e) {
   const toStringDoc = this.targetEditor.value;
+
   this.targetSandbox = this.targetSandbox ? this.targetSandbox : e.target;
-  this.targetSandbox.contentWindow.postMessage(toStringDoc, '*');
+
+  if (e.type !== 'load') {
+    this.targetSandbox.src = srcPath;
+  }
+  this.targetSandbox.contentWindow.postMessage({ code: toStringDoc }, '*');
 };
 
 /* --- iframe */
@@ -51,11 +61,11 @@ const sandbox = DomFactory.create('iframe', {
     allow:
       'accelerometer; ambient-light-sensor; autoplay; bluetooth; camera; encrypted-media; geolocation; gyroscope;  hid; microphone; magnetometer; midi; payment; usb; serial; vr; xr-spatial-tracking',
     loading: 'lazy',
-    src: './js/sandboxes/sandbox.html',
+    src: srcPath,
   },
   setStyles: {
     width: '100%',
-    height: '80dvh',
+    height: '64dvh',
     'border-width': '0',
     'background-color': 'darkgray',
   },
