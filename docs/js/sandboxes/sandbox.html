@@ -7,8 +7,19 @@
       content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"
     />
 
+    <script>
+      console.log(`--- ${Date.now()}: [sb] bf`);
+      window.auCtx = new AudioContext();
+      console.log(`${window.auCtx.state} : top`);
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/p5@2.2.3/lib/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5.sound@0.3.0/dist/p5.sound.js"></script>
+
+    <script>
+      console.log(`--- ${Date.now()}: [sb] af`);
+      p5.prototype.setAudioContext(window.auCtx);
+    </script>
 
     <script type="importmap">
       {
@@ -20,9 +31,12 @@
 
     <!-- eruda -->
     <script type="module">
-      import eruda from "eruda";
+      import eruda from 'eruda';
 
       eruda.init();
+      const timeStr = new Date().toLocaleTimeString();
+      const outLog = 'p5Canvas: ' + timeStr;
+      console.log(outLog);
     </script>
 
     <script type="module" src="./sandbox.js"></script>
@@ -30,3 +44,4 @@
   </head>
   <body></body>
 </html>
+
