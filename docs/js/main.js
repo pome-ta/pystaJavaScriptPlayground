@@ -22,7 +22,7 @@ document.addEventListener(touchEnded, () => {
   }
 });
 
-const isInstance = false;
+const isInstance = true;
 
 const instanceMode = `const sketch = (p) => {
   const v = 360;
@@ -33,7 +33,7 @@ const instanceMode = `const sketch = (p) => {
     // put setup code here
     const cnv = p.createCanvas(v, v);
     p.colorMode(p.HSL, v, 1, 1);
-    // cnv.mousePressed(playOscillator);
+    cnv.mouseReleased(p.userStartAudio);
     // p.userStartAudio();
     // console.log(p5.prototype.getAudioContext().state)
     osc = new p5.Oscillator('sawtooth');
