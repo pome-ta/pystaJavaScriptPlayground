@@ -11,20 +11,40 @@ const fft = ctx.createAnalyser();
 fft.fftSize = FFT_SIZE;
 fft.smoothingTimeConstant = 0.8;
 
-//fft.connect(ctx.destination);
-mainOsc.connect(ctx.destination);
-mainOsc.start();
-// audio 要素と紐付ける
-/*
-const nodeSource = context.createMediaElementSource(audioElement);
+const bufferLength = fft.frequencyBinCount;
+const dataArray = new Float32Array(bufferLength);
 
-nodeSource.connect(nodeAnalyser);
-*/
+
+fft.connect(ctx.destination);
+//mainOsc.connect(ctx.destination);
+mainOsc.connect(fft);
+mainOsc.start();
+
+
+/**
+ * Convert decibels into gain.
+ */
+function dbToGain(db) {
+	return Math.pow(10, db / 20);
+}
+
+
+
+
 function loop() {
   window.requestAnimationFrame(loop);
 
   // ここに描画処理を書く
-  console.log('l');
+  //console.log('l');
+  fft.getFloatFrequencyData(dataArray);
+  let spectrum = dataArray.map(v => dbToGain(v));
+  //console.log(dataArray)
+  //console.log(Math.max(...dataArray));
+  //console.log(dataArray)
+  console.log(Math.max(...spectrum));
+  //console.log(spectrum);
+
+  
 }
 
 const eventName = typeof document.ontouchend !== 'undefined' ? 'touchend' : 'mouseup';
@@ -37,5 +57,5 @@ function initAudioContext() {
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');
-  //loop();
+  loop();
 });
