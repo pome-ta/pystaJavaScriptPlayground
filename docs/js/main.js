@@ -6,7 +6,7 @@ const mainOsc = ctx.createOscillator();
 mainOsc.type = 'sine';
 mainOsc.frequency.setValueAtTime(440, ctx.currentTime);
 
-const FFT_SIZE = 4096;
+const FFT_SIZE = 1024;
 const fft = ctx.createAnalyser();
 fft.fftSize = FFT_SIZE;
 //fft.smoothingTimeConstant = 0.8;
